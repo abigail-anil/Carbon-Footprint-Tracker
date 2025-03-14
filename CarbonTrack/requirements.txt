@@ -1,0 +1,7 @@
+boto3==1.37.11
+Django==2.1.15
+django_jsonfield==1.4.1
+pytest==8.3.5
+Requests==2.32.3
+requests_mock==1.12.1
+setuptools==59.6.0

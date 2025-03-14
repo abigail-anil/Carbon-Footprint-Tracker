@@ -1,0 +1,58 @@
+{% extends "CarbonTracker/base_generic.html" %}
+
+{% block content %}
+<div class="content">
+    <h1>Carbon Footprint Tracker</h1>
+
+    <form method="post">
+        {% csrf_token %}
+
+        {{ activity_form.as_p }}
+
+        {% if activity_type == 'electricity' %}
+            <!-- Render ElectricityForm with dynamic choices for location -->
+            {{ form.as_p }}
+            <!-- This ensures the location field is rendered as a dropdown with the country options -->
+        {% elif activity_type == 'flight' %}
+            {{ form.as_p }}
+        {% elif activity_type == 'shipping' %}
+            {{ form.as_p }}
+        {% endif %}
+
+        <button type="submit">Calculate</button>
+
+        <div id="emission-result">
+            {% if not result %}
+                {% if error %}
+                    <p style="color: red;">{{ error }}</p>
+                {% endif %}
+                {{ activity_form.errors }}
+                {% if activity_type == 'electricity' %}
+                    {{ form.errors }}
+                {% elif activity_type == 'flight' %}
+                    {{ form.errors }}
+                {% elif activity_type == 'shipping' %}
+                    {{ form.errors }}
+                {% endif %}
+            {% endif %}
+            {% if result %}
+                <p>{{ result }}</p>
+            {% endif %}
+        </div>
+    </form>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const activitySelect = document.getElementById('id_activity_type');
+            if (activitySelect) {
+                activitySelect.addEventListener('change', function() {
+                    const selectedActivity = activitySelect.value;
+                    const currentUrl = new URL(window.location.href);
+                    currentUrl.searchParams.set('activity_type', selectedActivity);
+                    window.location.href = currentUrl.href;
+                });
+            }
+        });
+    </script>
+</div>
+{% endblock content %}

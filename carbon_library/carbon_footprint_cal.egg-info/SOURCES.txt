@@ -1,0 +1,16 @@
+LICENSE
+README.md
+setup.py
+carbon_footprint_cal/__init__.py
+carbon_footprint_cal.egg-info/PKG-INFO
+carbon_footprint_cal.egg-info/SOURCES.txt
+carbon_footprint_cal.egg-info/dependency_links.txt
+carbon_footprint_cal.egg-info/requires.txt
+carbon_footprint_cal.egg-info/top_level.txt
+carbon_footprint_cal/data_storage/__init__.py
+carbon_footprint_cal/data_storage/data_storage.py
+carbon_footprint_cal/data_validation/__init__.py
+carbon_footprint_cal/data_validation/utils.py
+carbon_footprint_cal/data_validation/validation.py
+carbon_footprint_cal/emissions/__init__.py
+carbon_footprint_cal/emissions/calculations.py

@@ -1,0 +1,9 @@
+boto3
+requests
+requests_mock
+
+[dev]
+pytest
+moto
+coverage
+pylint

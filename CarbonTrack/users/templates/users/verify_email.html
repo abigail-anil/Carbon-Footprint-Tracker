@@ -1,0 +1,15 @@
+<!-- verify_email.html -->
+{% extends "CarbonTracker/base_generic.html" %} {% block content %}
+    <h2>Email Verification</h2>
+
+    {% if messages %}
+        <ul>
+            {% for message in messages %}
+                <li>{{ message }}</li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+
+    <p>Your email verification status has been updated. You can now <a href="{% url 'signin' %}">sign in</a>.</p>
+
+{% endblock content %}

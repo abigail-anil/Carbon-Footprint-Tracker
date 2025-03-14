@@ -1,0 +1,16 @@
+{% extends "CarbonTracker/base_generic.html" %}
+
+{% block content %}
+<div class="content">
+    <h2>🌍 Join the Green Revolution!</h2>
+    <p>Track your carbon footprint and contribute to a sustainable future.</p>
+
+    <form method="POST">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit">Sign Up</button>
+    </form>
+
+    <p>Already have an account? <a href="{% url 'sign_in' %}">Sign In</a></p>
+</div>
+{% endblock content %}

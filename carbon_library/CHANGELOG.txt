@@ -1,0 +1,11 @@
+Version 1.0.0 (2025-02-27)
+--------------------------
+- Added: Initial release of the carbon_library.
+- Added: Carbon emission calculation for electricity and vehicle.
+- Added: AWS DynamoDB integration for data storage.
+- Added: integration with carbon interface api.
+
+Version 2.0.0 (2025-03-09)
+--------------------------
+- Added: Carbon emission calculation for shipping and flight and removed calculation for vehicle.
+- Added: Modified data storage and validation to include flight and shipping emissions.
