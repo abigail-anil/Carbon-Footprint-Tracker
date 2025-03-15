@@ -1,27 +1,26 @@
-{% load static %} 
-<!DOCTYPE html> 
-<html> <head> </head> 
-<body> 
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+</head>
+<body>
 <header>
-    <div class="topnav"> 
-    <a class="active" href="/">Home</a> 
-     {% if user.is_authenticated %} 
-    <div> You are signed in as {{user.username}}... 
-    <a href="{% url 'sign_out' %}">Sign out</a> 
-    
-    {% else %} 
-    
-    <a href="{% url 'sign_in' %}">Sign in</a> 
-     <a href="{% url 'users:sign_up' %}">Sign up</a> 
-    
-    {% endif %} 
-    {% load static %}
-    <link rel="stylesheet" href="{% static 'styles.css' %}">
-    </div> 
-</header> 
-<main> 
-{% block content %}
-{% endblock %} 
-</main> 
-</body> 
+    <div class="topnav">
+        <a class="active" href="/">Home</a>
+        <a href="{% url 'calculate_emission' %}">Calculate Emission</a> <a href="{% url 'emission_reports' %}">Emission Reports</a> {% if user.is_authenticated %}
+        <div> You are signed in as {{user.username}}...
+            <a href="{% url 'sign_out' %}">Sign out</a>
+        {% else %}
+            <a href="{% url 'sign_in' %}">Sign in</a>
+            <a href="{% url 'users:sign_up' %}">Sign up</a>
+        {% endif %}
+        {% load static %}
+        <link rel="stylesheet" href="{% static 'styles.css' %}">
+    </div>
+</header>
+<main>
+    {% block content %}
+    {% endblock %}
+</main>
+</body>
 </html>

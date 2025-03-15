@@ -1,9 +1,11 @@
 /* Ensure full viewport height */
 main {
-    height: 100vh;
+    min-height: 100vh; /* changed from height to min-height */
     display: flex;
     justify-content: center;
     align-items: center;
+    margin: 10px; /* added margin for responsiveness */
+    padding: 10px; /* added padding for responsiveness */
 }
 
 /* Navigation bar */
@@ -20,18 +22,24 @@ main {
     margin: 0 10px;
 }
 
-/* Center content */
+/* Center content (Dynamic Width) */
 .content {
     display: flex;
     flex-direction: column;
     justify-content: center;
-    text-align: center; /* Ensures text inside is centered */
+    text-align: center;
     width: 100%;
-    max-width: 400px;
     padding: 20px;
     border-radius: 10px;
     background-color: #ffffff;
     box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Form element container */
+
+.form-container {
+    max-width: 600px;
+    margin: 0 auto;
 }
 
 /* Ensure form elements are aligned */
@@ -42,22 +50,67 @@ main {
     gap: 10px;
 }
 
+.content form label{
+    margin-top: 5px;
+}
+
+/* Style select elements */
+.content form select {
+    width: auto; /* Adjust as needed */
+    max-width: 300px; /* Adjust as needed */
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    box-sizing: border-box; /* Include padding and border in element's total width and height */
+}
+
 /* Style buttons */
 .content button {
-    width: 100%;
+    width: auto;
+    min-width:250px;
+    max-width: 300px;
     padding: 10px;
     background-color: #007bff;
     color: white;
     border: none;
     border-radius: 5px;
     cursor: pointer;
+    margin: 10px auto;
 }
 
 .content button:hover {
     background-color: #0056b3;
 }
-
 /* Style the sign-up prompt */
 .content div {
     margin-top: 15px;
+}
+
+/* Media queries for responsiveness */
+@media (max-width: 600px) {
+    .content {
+        max-width: 90%; /* Adjust max-width on smaller screens */
+    }
+}
+
+
+/* Table styling */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+}
+
+th, td {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: left;
+}
+
+th {
+    background-color: #f2f2f2;
+}
+
+tr:nth-child(even) {
+    background-color: #f9f9f9;
 }

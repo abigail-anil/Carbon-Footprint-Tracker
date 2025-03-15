@@ -1,0 +1,6 @@
+env/
+*.pyc
+*.log
+*.sqlite3
+config/*.ini
+__pycache__
