@@ -118,3 +118,21 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/2.1/howto/static-files/
 
 STATIC_URL = '/static/'
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+        },
+    },
+    'loggers': {
+        'users': {  #
+            'handlers': ['console'],
+            'level': 'ERROR',  
+        },
+    },
+}
+
+SNS_TOPIC_ARN = "arn:aws:sns:us-east-1:754789402555:carbon_emissions_alerts"

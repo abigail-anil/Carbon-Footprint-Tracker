@@ -128,7 +128,7 @@ AWS_REGION = 'us-east-1'
 
 import os
 
-SNS_TOPIC_ARN = os.environ.get('SNS_TOPIC_ARN', 'arn:aws:sns:us-east-1:754789402555:EmailVerificationTopic')
+SNS_TOPIC_ARN = "arn:aws:sns:us-east-1:754789402555:carbon_emissions_alerts"
 
 LOGIN_REDIRECT_URL = '/'
 

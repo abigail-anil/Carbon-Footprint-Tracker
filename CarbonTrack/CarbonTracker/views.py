@@ -5,8 +5,9 @@ from carbon_footprint_cal.emissions.calculations import Calculations
 from carbon_footprint_cal.data_storage.data_storage import DataStorage
 from carbon_footprint_cal.data_validation.validation import Validation
 from decimal import Decimal
-from .utils import get_supported_countries
-from django.http import HttpResponse
+from .utils import get_supported_countries, subscribe_email_to_sns_topic
+from django.http import HttpResponse, JsonResponse
+from django.conf import settings as django_settings
 import os
 import boto3
 from datetime import datetime
@@ -16,11 +17,61 @@ from io import BytesIO
 import base64
 import csv
 import json
+import logging
 
-API_KEY = os.environ.get("CARBON_INTERFACE_API_KEY")
-calculator = Calculations(API_KEY)
+logger = logging.getLogger(__name__)
+
+def get_secret():
+    secret_name = "CARBON_INTERFACE_API_KEY" 
+    region_name = "us-east-1"
+
+    session = boto3.session.Session()
+    client = session.client(
+        service_name='secretsmanager',
+        region_name=region_name
+    )
+
+    try:
+        get_secret_value_response = client.get_secret_value(
+            SecretId=secret_name
+        )
+    except client.exceptions.ResourceNotFoundException:
+        logger.error("The requested secret was not found")
+        return None
+    except client.exceptions.InvalidRequestException:
+        logger.error("The request was invalid due to: invalid request")
+        return None
+    except client.exceptions.InvalidParameterException:
+        logger.error("The request had invalid params")
+        return None
+    except Exception as e:
+        logger.error(f"An error occurred: {e}")
+        return None
+
+    if 'SecretString' in get_secret_value_response:
+        secret = get_secret_value_response['SecretString']
+        return json.loads(secret)
+    else:
+        # Handle binary secrets if needed.
+        return json.loads(base64.b64decode(get_secret_value_response['SecretBinary']))
+
+secrets = get_secret()
+print(secrets)
+if secrets:
+    api_key = secrets.get("api_key")
+    if api_key:
+        calculator = Calculations(api_key)
+    else:
+        logger.error("API Key not found in secrets")
+        # Handle missing api key. Perhaps render an error page.
+        calculator = None #or handle it another way.
+else:
+    logger.error("Could not retrieve secrets")
+    calculator = None #or handle it another way.
+
 data_storage = DataStorage(table_name="CarbonFootprint")
 validation = Validation()
+
 
 @login_required
 def calculate_emission(request):
@@ -37,7 +88,7 @@ def calculate_emission(request):
     activity_type = request.GET.get('activity_type', 'electricity')
 
     # Fetch supported countries from DynamoDB
-    supported_countries = get_supported_countries()  # Fetch from DynamoDB 
+    supported_countries = get_supported_countries()
 
     if request.method == 'POST':
         activity_form = ActivityTypeForm(request.POST)
@@ -45,9 +96,8 @@ def calculate_emission(request):
             activity_type = activity_form.cleaned_data['activity_type']
 
             if activity_type == 'electricity':
-                # Create form here, passing the dynamic country choices.
                 form = ElectricityForm(request.POST)
-                form.fields['location'].choices = list(supported_countries.items())  # Dynamically update choices
+                form.fields['location'].choices = list(supported_countries.items())
 
             elif activity_type == 'flight':
                 form = FlightForm(request.POST)
@@ -56,9 +106,8 @@ def calculate_emission(request):
 
             if form and form.is_valid():
                 try:
-                    # Calculate the emission
                     if activity_type == 'electricity':
-                        country_code = form.cleaned_data['location']  # Get country code (e.g., 'US', 'IN')
+                        country_code = form.cleaned_data['location']
                         value = form.cleaned_data['value']
                         unit = form.cleaned_data['unit']
                         api_data = {"location": country_code, "value": value, "unit": unit}
@@ -69,7 +118,7 @@ def calculate_emission(request):
                     elif activity_type == 'flight':
                         passengers = form.cleaned_data['passengers']
                         legs = [{"departure_airport": form.cleaned_data['departure_airport'],
-                                "destination_airport": form.cleaned_data['destination_airport']}]
+                                 "destination_airport": form.cleaned_data['destination_airport']}]
                         validation.validate_flight_params(passengers, legs)
                         emission = calculator.calculate_flight_emission(passengers, legs)
                         input_params = {"passengers": passengers, "legs": legs}
@@ -81,9 +130,9 @@ def calculate_emission(request):
                         distance_unit = form.cleaned_data['distance_unit']
                         transport_method = form.cleaned_data['transport_method']
                         validation.validate_shipping_params(weight_value, weight_unit, distance_value, distance_unit,
-                                                            transport_method)
+                                                           transport_method)
                         emission = calculator.calculate_shipping_emission(weight_value, weight_unit, distance_value,
-                                                                         distance_unit, transport_method)
+                                                                          distance_unit, transport_method)
                         input_params = {"weight_value": str(weight_value), "weight_unit": weight_unit,
                                         "distance_value": str(distance_value), "distance_unit": distance_unit,
                                         "transport_method": transport_method}
@@ -98,14 +147,16 @@ def calculate_emission(request):
                         error = "Emission calculation failed."
                 except ValueError as e:
                     error = str(e)
+                except AttributeError as e:
+                    error = "API key retrieval or calculation failed. Please check logs."
+                    logger.error(f"Attribute error during calculation: {e}")
 
     elif request.method == 'GET' and 'activity_type' in request.GET:
         activity_type = request.GET['activity_type']
 
         if activity_type == 'electricity':
-            # Create form here with dynamically updated choices
             form = ElectricityForm()
-            form.fields['location'].choices = list(supported_countries.items())  # Dynamically update choices
+            form.fields['location'].choices = list(supported_countries.items())
         elif activity_type == 'flight':
             form = FlightForm()
         elif activity_type == 'shipping':
@@ -118,7 +169,6 @@ def calculate_emission(request):
         'error': error,
         'activity_type': activity_type
     })
-
 
 dynamodb = boto3.resource('dynamodb')
 table = dynamodb.Table('CarbonFootprint')
@@ -440,3 +490,86 @@ def export_csv(request):
     # Append the total emissions row
     writer.writerow(['', '', 'Total Emissions:', f"{total_emissions:.2f}"])
     return response
+    
+settings_table = dynamodb.Table('user_settings')
+
+@login_required
+def settings_view(request):
+    user_id = request.user.username
+
+    if request.method == 'GET':
+        try:
+            settings_response = settings_table.get_item(Key={'userId': user_id})
+            settings = settings_response.get('Item', {
+                'electricity_threshold': 0,
+                'flight_threshold': 0,
+                'shipping_threshold': 0,
+                'emission_check_frequency': 'Never',
+                'subscribed': False
+            })
+            return render(request, 'CarbonTracker/settings.html', {'settings': settings})
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=500)
+
+    elif request.method == 'POST':
+        if 'subscribe' in request.POST:
+            try:
+                # Get the settings from the database first
+                settings_response = settings_table.get_item(Key={'userId': user_id})
+                settings = settings_response.get('Item', {
+                    'electricity_threshold': 0,
+                    'flight_threshold': 0,
+                    'shipping_threshold': 0,
+                    'emission_check_frequency': 'Never',
+                    'subscribed': False
+                })
+
+                topic_arn = django_settings.SNS_TOPIC_ARN # Access django settings
+                email = request.user.email
+
+                if topic_arn and email:
+                    subscribe_email_to_sns_topic(topic_arn, email)
+                    settings_table.update_item(
+                        Key={'userId': user_id},
+                        UpdateExpression="SET subscribed = :s",
+                        ExpressionAttributeValues={':s': True}
+                    )
+                    settings['subscribed'] = True #Update the dictionary, because we already have it.
+                    return render(request, 'CarbonTracker/settings.html', {'settings': settings, 'message': 'Subscription successful!'})
+                else:
+                    return render(request, 'CarbonTracker/settings.html', {'settings': settings, 'message': 'Subscription failed. SNS topic or email not configured.'})
+
+            except Exception as e:
+                logger.error(f"SNS subscription error: {e}")
+                return render(request, 'CarbonTracker/settings.html', {'settings': settings, 'message': f'Subscription error: {e}'})
+
+        else:
+            try:
+                data = json.loads(request.body)
+                electricity_threshold = Decimal(str(data['electricityThreshold']))
+                flight_threshold = Decimal(str(data['flightThreshold']))
+                shipping_threshold = Decimal(str(data['shippingThreshold']))
+                emission_check_frequency = data['emissionCheckFrequency']
+
+                settings_table.update_item(
+                    Key={'userId': user_id},
+                    UpdateExpression="set electricity_threshold = :e, flight_threshold = :f, shipping_threshold = :s, emission_check_frequency = :c",
+                    ExpressionAttributeValues={
+                        ':e': electricity_threshold,
+                        ':f': flight_threshold,
+                        ':s': shipping_threshold,
+                        ':c': emission_check_frequency
+                    },
+                    ReturnValues="UPDATED_NEW"
+                )
+                settings_response = settings_table.get_item(Key={'userId': user_id})
+                settings = settings_response.get('Item', {
+                    'electricity_threshold': electricity_threshold,
+                    'flight_threshold': flight_threshold,
+                    'shipping_threshold': shipping_threshold,
+                    'emission_check_frequency': emission_check_frequency,
+                    'subscribed': settings_response.get('Item',{'subscribed':False}).get('subscribed')
+                })
+                return JsonResponse({'message': 'Settings updated successfully'}, status=200)
+            except Exception as e:
+                return JsonResponse({'error': str(e)}, status=500)

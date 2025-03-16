@@ -1,0 +1,129 @@
+{% extends "CarbonTracker/base_generic.html" %}
+
+{% block content %}
+<script src="https://polyfill.io/v3/polyfill.min.js?features=fetch"></script>
+<div class="sidebar">
+            <a href="{% url 'calculate_emission' %}">Calculate Emission</a>
+            <a href="{% url 'emission_reports' %}">Emission Reports</a>
+        </div>
+<div class="content">
+    <h1>User Settings</h1>
+    
+    <form id="settingsForm" method="post">
+        {% csrf_token %}
+
+        <label for="electricityThreshold">Electricity Threshold:</label>
+        <input type="number" id="electricityThreshold" name="electricityThreshold" required><br><br>
+
+        <label for="flightThreshold">Flight Threshold:</label>
+        <input type="number" id="flightThreshold" name="flightThreshold" required><br><br>
+
+        <label for="shippingThreshold">Shipping Threshold:</label>
+        <input type="number" id="shippingThreshold" name="shippingThreshold" required><br><br>
+
+        <label for="emissionCheckFrequency">Emission Check Frequency:</label>
+        <select id="emissionCheckFrequency" name="emissionCheckFrequency">
+            <option value="Never">Never</option>
+            <option value="Monthly">Monthly</option>
+        </select><br><br>
+
+        <div class="form-container">
+            <button type="submit">Save Settings</button>
+        </div>
+
+        <div id="settings-result">
+            {% if settings_error %}
+                <p style="color: red;">{{ settings_error }}</p>
+            {% endif %}
+            {% if settings_message %}
+                <p>{{ settings_message }}</p>
+            {% endif %}
+        </div>
+    </form>
+    {% if message %}
+    <p>{{ message }}</p>
+    {% endif %}
+
+    {% if not settings.subscribed %}
+    <form method="post">
+        {% csrf_token %}
+        <button type="submit" name="subscribe">Subscribe to Notifications</button>
+    </form>
+    {% else %}
+        {% if message == 'Subscription successful!' %}
+            <p>Subscription successful! Please check your email to confirm your subscription.</p>
+        {% else %}
+            <p>You are already subscribed to notifications.</p>
+        {% endif %}
+    {% endif %}
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            fetch('/settings/')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        alert(data.error);
+                    } else {
+                        document.getElementById('electricityThreshold').value = data.settings.electricity_threshold || '';
+                        document.getElementById('flightThreshold').value = data.settings.flight_threshold || '';
+                        document.getElementById('shippingThreshold').value = data.settings.shipping_threshold || '';
+                        document.getElementById('emissionCheckFrequency').value = data.settings.emission_check_frequency || 'Never'; // Set default to 'Never'
+                    }
+                });
+
+            document.getElementById('settingsForm').addEventListener('submit', function(event) {
+                event.preventDefault();
+
+                let electricity = document.getElementById('electricityThreshold').value;
+                let flight = document.getElementById('flightThreshold').value;
+                let shipping = document.getElementById('shippingThreshold').value;
+                let frequency = document.getElementById('emissionCheckFrequency').value;
+
+                if (isNaN(electricity) || electricity <= 0 ||
+                    isNaN(flight) || flight <= 0 ||
+                    isNaN(shipping) || shipping <= 0) {
+                    alert("Thresholds must be positive numbers.");
+                    return;
+                }
+
+                fetch('/settings/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: JSON.stringify({
+                        electricityThreshold: electricity,
+                        flightThreshold: flight,
+                        shippingThreshold: shipping,
+                        emissionCheckFrequency: frequency
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if(data.error){
+                        document.getElementById("settings-result").innerHTML = `<p style = "color:red;"> ${data.error} </p>`
+                    } else {
+                        document.getElementById("settings-result").innerHTML = `<p> ${data.message} </p>`
+                    }
+                });
+            });
+
+            function getCookie(name) {
+                let cookieValue = null;
+                if (document.cookie && document.cookie !== '') {
+                    const cookies = document.cookie.split(';');
+                    for (let i = 0; i < cookies.length; i++) {
+                        const cookie = cookies[i].trim();
+                        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                            break;
+                        }
+                    }
+                }
+                return cookieValue;
+            }
+        });
+    </script>
+</div>
+{% endblock content %}

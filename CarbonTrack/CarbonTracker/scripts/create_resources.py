@@ -97,11 +97,11 @@ def create_dynamodb_table4(table_name, region_name="us-east-1"):
             TableName=table_name,
             KeySchema=[
                 {"AttributeName": "userId", "KeyType": "HASH"},  # Partition key
-                {"AttributeName": "timestamp", "KeyType": "RANGE"},  # Sort key
+                #{"AttributeName": "timestamp", "KeyType": "RANGE"},  # Sort key
             ],
             AttributeDefinitions=[
                 {"AttributeName": "userId", "AttributeType": "S"},
-                {"AttributeName": "timestamp", "AttributeType": "S"},
+                #{"AttributeName": "timestamp", "AttributeType": "S"},
             ],
             ProvisionedThroughput={"ReadCapacityUnits": 5, "WriteCapacityUnits": 5},
         )
@@ -111,13 +111,16 @@ def create_dynamodb_table4(table_name, region_name="us-east-1"):
         print(f"Error creating table: {e}")
 
 
+
+
+
 if __name__ == "__main__":
     create_s3_bucket("carbon-tracker-reports", "us-east-1")
     create_dynamodb_table1("CarbonFootprint", "us-east-1")
     create_sns_topic("carbon-tracker-sns", "us-east-1")
     create_dynamodb_table2("supported_countries", "us-east-1")
     create_dynamodb_table3("fuel_sources", "us-east-1")
-    create_dynamodb_table3("user_settings", "us-east-1")
+    create_dynamodb_table4("user_settings", "us-east-1")
     ''' bucket_name = os.environ.get("S3_BUCKET_NAME")
     table_name = os.environ.get("DYNAMODB_TABLE_NAME")
     topic_name = os.environ.get("SNS_TOPIC_NAME")
@@ -129,3 +132,30 @@ if __name__ == "__main__":
         create_s3_bucket(bucket_name, region)
         create_dynamodb_table(table_name, region)
         create_sns_topic(topic_name, region)'''
+        
+        
+
+dynamodb = boto3.client('dynamodb')
+
+try:
+    # Get the current table description
+    table_description = dynamodb.describe_table(TableName='user_settings')
+    table_details = table_description['Table']
+
+    # Extract ProvisionedThroughput or BillingMode
+    if 'ProvisionedThroughput' in table_details:
+        throughput = table_details['ProvisionedThroughput']
+        update_params = {
+            'TableName': 'user_settings',
+            'AttributeDefinitions': [
+                {'AttributeName': 'user_id', 'AttributeType': 'S'},
+                {'AttributeName': 'electricity_threshold', 'AttributeType': 'N'},
+                {'AttributeName': 'flight_threshold', 'AttributeType': 'N'},
+                {'AttributeName': 'shipping_threshold', 'AttributeType': 'N'},
+                {'AttributeName': 'emission_check_frequency', 'AttributeType': 'S'}
+            ],
+            'ProvisionedThroughput': throughput,
+        }
+    print("Table updated successfully")
+except Exception as e:
+    print(f"Error updating table: {e}")
