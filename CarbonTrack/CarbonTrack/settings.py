@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/2.1/ref/settings/
 """
 
 import os
+import boto3
 from dotenv import load_dotenv
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
@@ -26,7 +27,7 @@ SECRET_KEY = 'z0ggh1dm6n0qy*=qmg*u(j$%we2_8_@do(#sa!*2)h^d534*u2'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['172.31.31.53',
+ALLOWED_HOSTS = [
 '127.0.0.1',
 'localhost',
 '879ac48e1c8f4ff3afc73a519682e53b.vfs.cloud9.us-east-1.amazonaws.com',
@@ -161,3 +162,8 @@ LOGGING = {
         },
     },
 }
+
+AWS_REGION = os.getenv('AWS_REGION', 'us-east-1')  
+
+# Set the region for boto3 to use (AWS SDK)
+boto3.setup_default_session(region_name=AWS_REGION)
