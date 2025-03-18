@@ -28,7 +28,8 @@ DEBUG = True
 
 ALLOWED_HOSTS = ['127.0.0.1',
 'localhost',
-'879ac48e1c8f4ff3afc73a519682e53b.vfs.cloud9.us-east-1.amazonaws.com']
+'879ac48e1c8f4ff3afc73a519682e53b.vfs.cloud9.us-east-1.amazonaws.com',
+'x23433698carbontracker-env.eba-zwdntvfd.us-east-1.elasticbeanstalk.com']
 
 
 # Application definition
