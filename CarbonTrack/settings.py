@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/2.1/ref/settings/
 """
 
 import os
+import boto3
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -136,3 +137,8 @@ LOGGING = {
 }
 
 SNS_TOPIC_ARN = "arn:aws:sns:us-east-1:754789402555:carbon_emissions_alerts"
+
+AWS_REGION = os.getenv('AWS_REGION', 'us-east-1')
+
+# Set the region for boto3 to use (AWS SDK)
+boto3.setup_default_session(region_name=AWS_REGION)
