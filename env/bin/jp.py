@@ -1,4 +1,4 @@
-#!/home/ec2-user/environment/Project/env/bin/python3
+#!/home/ec2-user/environment/Project/env/bin/python
 
 import sys
 import json
