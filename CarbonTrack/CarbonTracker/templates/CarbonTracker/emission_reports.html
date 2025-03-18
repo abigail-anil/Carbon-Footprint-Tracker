@@ -3,91 +3,116 @@
 {% block content %}
 
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.min.css">
-
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-
 <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
-<div class="sidebar">
-            <a href="{% url 'calculate_emission' %}">Calculate Emission</a>
-            <a href="{% url 'emission_reports' %}">Emission Reports</a>
+
+<div class="main-content-wrapper">
+    <div class="content">
+        <h1>Emission Reports</h1>
+
+        <div class="form-container">
+            <form method="get">
+                <label for="start_date">Start Date:</label>
+                <input type="date" name="start_date" value="{{ start_date }}">
+
+                <label for="end_date">End Date:</label>
+                <input type="date" name="end_date" value="{{ end_date }}">
+
+                <label for="activity_type">Activity Type:</label>
+                <select name="activity_type">
+                    <option value="">All</option>
+                    <option value="electricity" {% if activity_type == 'electricity' %}selected{% endif %}>Electricity</option>
+                    <option value="flight" {% if activity_type == 'flight' %}selected{% endif %}>Flight</option>
+                    <option value="shipping" {% if activity_type == 'shipping' %}selected{% endif %}>Shipping</option>
+                </select>
+
+                <button type="submit">Filter</button>
+            </form>
         </div>
 
-<div class="content">
-    <h1>Emission Reports</h1>
+        <h2>Total Emissions: {{ total_emissions }} kg CO2e</h2>
 
-    <div class="form-container">
-        <form method="get">
-            <label for="start_date">Start Date:</label>
-            <input type="date" name="start_date" value="{{ start_date }}">
+        <a href="{% url 'export_csv' %}?start_date={{ start_date }}&end_date={{ end_date }}&activity_type={{ activity_type }}">Export to CSV</a>
 
-            <label for="end_date">End Date:</label>
-            <input type="date" name="end_date" value="{{ end_date }}">
+        {% if emissions %}
+            <table id="emissionTable" class="display">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Activity Type</th>
+                        <th>Input Parameters</th>
+                        <th>Emission (kg CO2e)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for emission in emissions %}
+                        <tr>
+                            <td>{{ emission.timestamp|date:"Y-m-d H:i:s" }}</td>
+                            <td>{{ emission.activity_type }}</td>
+                            <td>
+                                {% if emission.activity_type == 'electricity' %}
+                                    Value: {{ emission.input_params.value }}, Location: {{ emission.input_params.location }}, Unit: {{ emission.input_params.unit }}
+                                {% elif emission.activity_type == 'flight' %}
+                                    Passengers: {{ emission.input_params.passengers }}, Legs:
+                                    {% for leg in emission.input_params.legs %}
+                                        (Departure: {{ leg.departure_airport }}, Destination: {{ leg.destination_airport }})
+                                    {% endfor %}
+                                {% elif emission.activity_type == 'shipping' %}
+                                    Transport: {{ emission.input_params.transport_method }}, Distance: {{ emission.input_params.distance_value }} {{ emission.input_params.distance_unit }}, Weight: {{ emission.input_params.weight_value }} {{ emission.input_params.weight_unit }}
+                                {% endif %}
+                            </td>
+                            <td>{{ emission.carbonKg }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
 
-            <label for="activity_type">Activity Type:</label>
-            <select name="activity_type">
-                <option value="">All</option>
-                <option value="electricity" {% if activity_type == 'electricity' %}selected{% endif %}>Electricity</option>
-                <option value="flight" {% if activity_type == 'flight' %}selected{% endif %}>Flight</option>
-                <option value="shipping" {% if activity_type == 'shipping' %}selected{% endif %}>Shipping</option>
-            </select>
-
-            <button type="submit">Filter</button>
-        </form>
+            <script>
+                $(document).ready(function() {
+                    $('#emissionTable').DataTable({
+                        "paging": true,
+                        "searching": true,
+                        "info": true,
+                        "order": [[0, 'asc']]
+                    });
+                });
+            </script>
+        {% else %}
+            <p>No emission reports found.</p>
+        {% endif %}
     </div>
 
-    <h2>Total Emissions: {{ total_emissions }} kg CO2e</h2>
+    <div class="chart-area">
+        <div class="chart-container">
+            {% if chart_image_line %}
+                <h3>Emissions Over Time</h3>
+                <img src="data:image/png;base64,{{ chart_image_line }}" alt="Line Chart">
+                {% if s3_line_url %}
+                    <p><a href="{{ s3_line_url }}" target="_blank">Download Line Chart</a></p>
+                {% endif %}
+            {% endif %}
+        </div>
 
-    <img src="data:image/png;base64,{{ chart_image }}" alt="Emission Chart" {% if not chart_image %}style="display: none;"{% endif %}>
+        <div class="chart-container">
+            {% if chart_image_bar %}
+                <h3>Emissions by Activity Type</h3>
+                <img src="data:image/png;base64,{{ chart_image_bar }}" alt="Bar Chart">
+                {% if s3_bar_url %}
+                    <p><a href="{{ s3_bar_url }}" target="_blank">Download Bar Chart</a></p>
+                {% endif %}
+            {% endif %}
+        </div>
 
-    <a href="{% url 'export_csv' %}?start_date={{ start_date }}&end_date={{ end_date }}&activity_type={{ activity_type }}">Export to CSV</a>
-
-    {% if emissions %}
-        <table id="emissionTable" class="display">
-            <thead>
-                <tr>
-                    <th>Date</th>
-                    <th>Activity Type</th>
-                    <th>Input Parameters</th>
-                    <th>Emission (kg CO2e)</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for emission in emissions %}
-                    <tr>
-                        <td>{{ emission.timestamp|date:"Y-m-d H:i:s" }}</td>
-                        <td>{{ emission.activity_type }}</td>
-                        <td>
-                            {% if emission.activity_type == 'electricity' %}
-                                Value: {{ emission.input_params.value }}, Location: {{ emission.input_params.location }}, Unit: {{ emission.input_params.unit }}
-                            {% elif emission.activity_type == 'flight' %}
-                                Passengers: {{ emission.input_params.passengers }}, Legs:
-                                {% for leg in emission.input_params.legs %}
-                                    (Departure: {{ leg.departure_airport }}, Destination: {{ leg.destination_airport }})
-                                {% endfor %}
-                            {% elif emission.activity_type == 'shipping' %}
-                                Transport: {{ emission.input_params.transport_method }}, Distance: {{ emission.input_params.distance_value }} {{ emission.input_params.distance_unit }}, Weight: {{ emission.input_params.weight_value }} {{ emission.input_params.weight_unit }}
-                            {% endif %}
-                        </td>
-                        <td>{{ emission.carbonKg }}</td>
-                    </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-
-        <script>
-            $(document).ready(function() {
-                // Initialize DataTables on the emissionTable
-                $('#emissionTable').DataTable({
-                    "paging": true,  // Enable pagination
-                    "searching": true,  // Enable search box
-                    "info": true,  // Show table info (e.g., "Showing 1-10 of 50 entries")
-                    "order": [[0, 'asc']]  // Default order by the first column (Date)
-                });
-            });
-        </script>
-    {% else %}
-        <p>No emission reports found.</p>
-    {% endif %}
+        <div class="chart-container">
+            {% if chart_image_pie %}
+                <h3>Emission Distribution</h3>
+                <img src="data:image/png;base64,{{ chart_image_pie }}" alt="Pie Chart">
+                {% if s3_pie_url %}
+                    <p><a href="{{ s3_pie_url }}" target="_blank">Download Pie Chart</a></p>
+                {% endif %}
+            {% endif %}
+        </div>
+    </div>
 </div>
 
 {% endblock content %}

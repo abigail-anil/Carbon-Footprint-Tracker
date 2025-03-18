@@ -19,13 +19,19 @@
                 {% if user.is_authenticated %}
                     <a href="{% url 'settings' %}">Settings</a>
                 {% endif %}
-            
+            </div>
+        </div>
     </header>
-   <main>
+    <div class="main-container">
+        <div class="sidebar">
+            <a href="{% url 'calculate_emission' %}">Calculate Emission</a>
+            <a href="{% url 'emission_reports' %}">Emission Reports</a>
+        </div>
+        <div class="content-wrapper">
             {% block content %}
             {% endblock %}
-        
-    </main>
+        </div>
+    </div>
     <link rel="stylesheet" href="{% static 'styles.css' %}">
 </body>
 </html>

@@ -5,9 +5,11 @@ from carbon_footprint_cal.emissions.calculations import Calculations
 from carbon_footprint_cal.data_storage.data_storage import DataStorage
 from carbon_footprint_cal.data_validation.validation import Validation
 from decimal import Decimal
-from .utils import get_supported_countries, subscribe_email_to_sns_topic
+from .utils import get_supported_countries, subscribe_email_to_sns_topic, upload_chart_to_s3
+from django.conf import settings
 from django.http import HttpResponse, JsonResponse
 from django.conf import settings as django_settings
+import numpy as np #import numpy
 import os
 import boto3
 from datetime import datetime
@@ -56,7 +58,7 @@ def get_secret():
         return json.loads(base64.b64decode(get_secret_value_response['SecretBinary']))
 
 secrets = get_secret()
-print(secrets)
+
 if secrets:
     api_key = secrets.get("api_key")
     if api_key:
@@ -68,6 +70,8 @@ if secrets:
 else:
     logger.error("Could not retrieve secrets")
     calculator = None #or handle it another way.
+
+
 
 data_storage = DataStorage(table_name="CarbonFootprint")
 validation = Validation()
@@ -173,25 +177,72 @@ def calculate_emission(request):
 dynamodb = boto3.resource('dynamodb')
 table = dynamodb.Table('CarbonFootprint')
 
-def generate_chart(emissions):
+def generate_chart(emissions, chart_type="line"):
+    # Create a new figure for the chart.
     plt.figure(figsize=(12, 6))
 
+    # Check if there is any emissions data to plot.
     if not emissions:
-        print("No emissions data available for chart")
+        print(f"No emissions data available for {chart_type} chart")
         return None
 
-    # Always sort by timestamp before extracting data
-    emissions.sort(key=lambda x: x["timestamp"])
+    if chart_type == "line":
+        emissions.sort(key=lambda x: x["timestamp"])
+        timestamps = [e["timestamp"] for e in emissions]
+        emissions_values = [e["carbonKg"] for e in emissions]
 
-    timestamps = [e["timestamp"] for e in emissions]
-    emissions_values = [e["carbonKg"] for e in emissions]
+        plt.plot(timestamps, emissions_values, marker="o", linestyle="-", color="b")
+        plt.xlabel("Date")
+        plt.ylabel("Emissions (kg CO2e)")
+        #plt.title("Emissions Over Time")
+        plt.xticks(rotation=45)
+        plt.grid(True)
 
-    plt.plot(timestamps, emissions_values, marker="o", linestyle="-", color="b")
-    plt.xlabel("Date")
-    plt.ylabel("Emissions (kg CO2e)")
-    plt.title("Emissions Over Time")
-    plt.xticks(rotation=45)
-    plt.grid(True)
+    elif chart_type == "bar":
+        activity_types = [e["activity_type"] for e in emissions]
+        emissions_values = [e["carbonKg"] for e in emissions]
+
+        plt.bar(activity_types, emissions_values, color="b")
+        plt.xlabel("Activity Type")
+        plt.ylabel("Emissions (kg CO2e)")
+        #plt.title(f"Emissions by Activity Type")
+        
+
+    elif chart_type == "pie":
+        activity_types = list(set([e["activity_type"] for e in emissions]))
+        emissions_values = []
+        for at in activity_types:
+            total_carbon = 0
+            for e in emissions:
+                if e["activity_type"] == at:
+                    total_carbon += e["carbonKg"]
+                    print(f"Adding carbonKg value: {e['carbonKg']} for activity type {at}")
+            emissions_values.append(total_carbon)
+
+        plt.figure(figsize=(12, 8))
+
+        wedges, texts, autotexts = plt.pie(emissions_values, labels=activity_types, autopct='%1.3f%%', labeldistance=1.8)  # Adjust labeldistance
+
+        # Add annotations (arrows)
+        for i, wedge in enumerate(wedges):
+            angle = (wedge.theta1 + wedge.theta2) / 2
+            radius = wedge.r
+            x = radius * 1.15 * np.cos(np.deg2rad(angle))  # Adjust label position
+            y = radius * 1.15 * np.sin(np.deg2rad(angle))
+            label_x = radius * 1.8 * np.cos(np.deg2rad(angle)) #adjust label position
+            label_y = radius * 1.8 * np.sin(np.deg2rad(angle))
+
+            plt.annotate(
+                texts[i].get_text(),
+                xy=(x, y),
+                xytext=(label_x, label_y),
+                arrowprops=dict(arrowstyle="-|>", connectionstyle="arc3,rad=0.2"),
+                horizontalalignment='center',
+                verticalalignment='center'
+            )
+        for text in texts:
+            text.set_visible(False) #hide original labels
+       # plt.title("Emission Distribution")
 
     buf = BytesIO()
     plt.savefig(buf, format="png")
@@ -237,6 +288,20 @@ def filter_and_sort_emissions(emissions, start_date, end_date, activity_type, so
 
 
     return filtered_emissions
+    
+s3_client = boto3.client('s3')
+
+def generate_presigned_url(bucket_name, object_name, expiration=3600):
+    """Generate a presigned URL to share an S3 object"""
+    try:
+        response = s3_client.generate_presigned_url('get_object',
+                                                    Params={'Bucket': bucket_name,
+                                                            'Key': object_name},
+                                                    ExpiresIn=expiration)
+    except Exception as e:
+        logging.error(e)
+        return None
+    return response
 
 dynamodb = boto3.resource('dynamodb')
 table = dynamodb.Table('CarbonFootprint')
@@ -251,7 +316,13 @@ def emission_reports(request):
 
     emissions_display = []
     total_emissions = 0
-    chart_image = None  # Default to None, indicating no chart (MODIFIED: Initialized to None)
+    chart_image_line = None
+    chart_image_bar = None
+    chart_image_pie = None
+
+    s3_line_url = None
+    s3_bar_url = None
+    s3_pie_url = None
 
     if start_date and end_date: # MODIFIED: Check if both start_date and end_date are provided
         # User has selected dates, proceed with filtering
@@ -345,7 +416,27 @@ def emission_reports(request):
 
         #total_emissions = sum(item['carbonKg'] for item in emissions_display)
         total_emissions = round(sum(item['carbonKg'] for item in emissions_display), 2)
-        chart_image = generate_chart(emissions_display)
+        chart_image_line = generate_chart(emissions_display, "line")
+        chart_image_bar = generate_chart(emissions_display, "bar")
+        chart_image_pie = generate_chart(emissions_display, "pie")
+        
+        if chart_image_line:
+            object_key = f"{request.user.username}/emissions_line.png"
+            s3_line_url = generate_presigned_url(settings.S3_BUCKET_NAME, object_key)
+            upload_chart_to_s3(request.user.username, chart_image_line, "emissions_line") #uploading line chart
+
+
+        if chart_image_bar:
+            object_key = f"{request.user.username}/emissions_bar.png"
+            s3_bar_url = generate_presigned_url(settings.S3_BUCKET_NAME, object_key)
+            upload_chart_to_s3(request.user.username, chart_image_bar, "emissions_bar") #uploading bar chart
+
+            
+
+        if chart_image_pie:
+            object_key = f"{request.user.username}/emissions_pie.png"
+            s3_pie_url = generate_presigned_url(settings.S3_BUCKET_NAME, object_key)
+            upload_chart_to_s3(request.user.username, chart_image_pie, "emissions_pie") #uploading pie chart
 
     # If no dates are selected, emissions_display will be empty, total_emissions will be 0, and chart_image will be None (MODIFIED: No else block, allowing default values to remain)
 
@@ -355,7 +446,12 @@ def emission_reports(request):
         'start_date': start_date,
         'end_date': end_date,
         'activity_type': activity_type,
-        'chart_image': chart_image,
+        'chart_image_line': chart_image_line,
+        'chart_image_bar': chart_image_bar,
+        'chart_image_pie': chart_image_pie,
+        's3_line_url': s3_line_url,
+        's3_bar_url': s3_bar_url,
+        's3_pie_url': s3_pie_url,
         'sort_by': sort_by,
         'sort_order': sort_order,
     })

@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/2.1/ref/settings/
 """
 
 import os
+from dotenv import load_dotenv
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -126,9 +127,9 @@ STATIC_URL = '/static/'
 
 AWS_REGION = 'us-east-1'
 
-import os
 
 SNS_TOPIC_ARN = "arn:aws:sns:us-east-1:754789402555:carbon_emissions_alerts"
+S3_BUCKET_NAME = os.getenv('S3_BUCKET_NAME','carbon-tracker-reports')
 
 LOGIN_REDIRECT_URL = '/'
 
@@ -137,6 +138,11 @@ STATICFILES_DIRS = [
     os.path.join(BASE_DIR, 'static'),
 ]
 
+
+
+
+
+load_dotenv()
 
 LOGGING = {
     'version': 1,

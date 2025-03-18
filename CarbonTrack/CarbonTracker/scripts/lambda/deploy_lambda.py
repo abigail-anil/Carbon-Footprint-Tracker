@@ -3,12 +3,10 @@ import time
 
 lambda_client = boto3.client('lambda')
 sns_client = boto3.client('sns')
-events_client = boto3.client('events') # Add this line
+events_client = boto3.client('events')
 
-
-rule_name = 'carbon-emissions-schedule'
-schedule_expression = 'cron(0 0 1 * ? *)'
-
+rule_name = 'carbon-emissions-daily-schedule' # change rule name
+schedule_expression = 'cron(40 21 * * ? *)'  # Daily at midnight UTC
 function_name = 'lambda-carbon-emissions'
 topic_arn = 'arn:aws:sns:us-east-1:754789402555:carbon_emissions_alerts'
 
@@ -41,7 +39,7 @@ except lambda_client.exceptions.ResourceNotFoundException:
             print(f'Error getting function state: {e}')
             time.sleep(5)
 
-lambda_arn = function_info['Configuration']['FunctionArn'] #use the function_info variable here.
+lambda_arn = function_info['Configuration']['FunctionArn']
 
 try:
     subscription_response = sns_client.subscribe(
@@ -64,15 +62,14 @@ try:
     print("Permission added")
 except Exception as e:
     print(f"Permission already exists or error: {e}")
-    
-    
+
 # CloudWatch events trigger.
 # Create CloudWatch Events Rule
 rule_response = events_client.put_rule(
     Name=rule_name,
     ScheduleExpression=schedule_expression,
     State='ENABLED',
-    Description='Triggers lambda-carbon-emissions on the first of every month at midnight UTC.'
+    Description='Triggers lambda-carbon-emissions daily at midnight UTC.' # changed description
 )
 
 print(f"CloudWatch Events rule created: {rule_response}")
