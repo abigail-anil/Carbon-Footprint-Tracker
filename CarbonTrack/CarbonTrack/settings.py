@@ -30,7 +30,7 @@ ALLOWED_HOSTS = ['172.31.31.53',
 '127.0.0.1',
 'localhost',
 '879ac48e1c8f4ff3afc73a519682e53b.vfs.cloud9.us-east-1.amazonaws.com',
-'carbontracker-env.eba-bursme2v.us-east-1.elasticbeanstalk.com']
+'emissiontracker-env.eba-y3yvfswp.us-east-1.elasticbeanstalk.com']
 
 
 # Application definition
