@@ -1,105 +1,106 @@
 {% extends "CarbonTracker/base_generic.html" %}
 
-{% load static %}
-
 {% block content %}
+<div style="display: flex; min-height: 100vh;">
+    <div style="width: 200px; background-color: #e0e0e0; padding: 10px; font-size: 1.2em;">
+        <a href="{% url 'calculate_emission' %}" style="font-size: 1.2em; display: block;">Calculate Emission</a><br><br>
+        <a href="{% url 'emission_reports' %}" style="font-size: 1.2em; display: block;">Emission Reports</a>
+    </div>
+    <div style="flex-grow: 1; padding: 20px; font-size: 1.2em;">
+        <h1 style="text-align: center; font-size: 1.5em;">Emission Reports</h1>
 
-<link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.min.css">
-
-<div class="main-content-wrapper">
-    <div class="content">
-        <h1>Emission Reports</h1>
-
-        <div class="form-container">
+        <div style="margin-top: 20px;">
             <form method="get">
-                <label for="start_date">Start Date:</label>
-                <input type="date" name="start_date" value="{{ start_date }}">
-
-                <label for="end_date">End Date:</label>
-                <input type="date" name="end_date" value="{{ end_date }}">
-
-                <label for="activity_type">Activity Type:</label>
-                <select name="activity_type">
-                    <option value="">All</option>
-                    <option value="electricity" {% if activity_type == 'electricity' %}selected{% endif %}>Electricity</option>
-                    <option value="flight" {% if activity_type == 'flight' %}selected{% endif %}>Flight</option>
-                    <option value="shipping" {% if activity_type == 'shipping' %}selected{% endif %}>Shipping</option>
-                </select>
-
-                <button type="submit">Filter</button>
+                <div style="display: flex; justify-content: space-between; width: 100%;">
+                    <label for="start_date">Start Date: <input type="date" name="start_date" value="{{ start_date }}"></label>
+                    <label for="end_date">End Date: <input type="date" name="end_date" value="{{ end_date }}" id="end_date_input"></label>
+                    <label for="activity_type">Activity Type:
+                        <select name="activity_type">
+                            <option value="">All</option>
+                            <option value="electricity" {% if activity_type == 'electricity' %}selected{% endif %}>Electricity</option>
+                            <option value="flight" {% if activity_type == 'flight' %}selected{% endif %}>Flight</option>
+                            <option value="shipping" {% if activity_type == 'shipping' %}selected{% endif %}>Shipping</option>
+                        </select>
+                    </label>
+                </div>
+                <div style="text-align: center; margin-top: 15px;">
+                    <button type="submit" id="filter_button" style="padding: 10px 20px; font-size: 1.2em;">Filter</button>
+                </div>
             </form>
         </div>
 
-        <h2>Total Emissions: {{ total_emissions }} kg CO2e</h2>
+        <h2 style="margin-top: 20px; text-align: center;">Total Emissions: {{ total_emissions }} kg CO2e</h2>
 
-        <a href="{% url 'export_csv' %}?start_date={{ start_date }}&end_date={{ end_date }}&activity_type={{ activity_type }}">Export to CSV</a>
+        <div style="text-align: center;">
+            <a href="{% url 'export_csv' %}?start_date={{ start_date }}&end_date={{ end_date }}&activity_type={{ activity_type }}" style="font-size: 1.2em;">Export to CSV</a>
+        </div>
 
         {% if emissions %}
-            <table id="emissionTable" class="display">
-                <thead>
-                    <tr>
-                        <th>Date</th>
-                        <th>Activity Type</th>
-                        <th>Input Parameters</th>
-                        <th>Emission (kg CO2e)</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for emission in emissions %}
-                        <tr>
-                            <td>{{ emission.timestamp|date:"Y-m-d H:i:s" }}</td>
-                            <td>{{ emission.activity_type }}</td>
-                            <td>
-                                {% if emission.activity_type == 'electricity' %}
-                                    Value: {{ emission.input_params.value }}, Location: {{ emission.input_params.location }}, Unit: {{ emission.input_params.unit }}
-                                {% elif emission.activity_type == 'flight' %}
-                                    Passengers: {{ emission.input_params.passengers }}, Legs:
-                                    {% for leg in emission.input_params.legs %}
-                                        (Departure: {{ leg.departure_airport }}, Destination: {{ leg.destination_airport }})
-                                    {% endfor %}
-                                {% elif emission.activity_type == 'shipping' %}
-                                    Transport: {{ emission.input_params.transport_method }}, Distance: {{ emission.input_params.distance_value }} {{ emission.input_params.distance_unit }}, Weight: {{ emission.input_params.weight_value }} {{ emission.input_params.weight_unit }}
-                                {% endif %}
-                            </td>
-                            <td>{{ emission.carbonKg }}</td>
-                        </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+        <table border="1" style="width: 100%; margin-top: 20px;">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Activity Type</th>
+                    <th>Input Parameters</th>
+                    <th>Emission (kg CO2e)</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for emission in emissions %}
+                <tr>
+                    <td>{{ emission.timestamp|date:"Y-m-d H:i:s" }}</td>
+                    <td>{{ emission.activity_type }}</td>
+                    <td>
+                        {% if emission.activity_type == 'electricity' %}
+                        Value: {{ emission.input_params.value }}, Location: {{ emission.input_params.location }}, Unit: {{ emission.input_params.unit }}
+                        {% elif emission.activity_type == 'flight' %}
+                        Passengers: {{ emission.input_params.passengers }}, Legs:
+                        {% for leg in emission.input_params.legs %}
+                        (Departure: {{ leg.departure_airport }}, Destination: {{ leg.destination_airport }})
+                        {% endfor %}
+                        {% elif emission.activity_type == 'shipping' %}
+                        Transport: {{ emission.input_params.transport_method }}, Distance: {{ emission.input_params.distance_value }} {{ emission.input_params.distance_unit }}, Weight: {{ emission.input_params.weight_value }} {{ emission.input_params.weight_unit }}
+                        {% endif %}
+                    </td>
+                    <td>{{ emission.carbonKg }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
         {% else %}
-            <p>No emission reports found.</p>
+        <p style="text-align: center;">No emission reports found.</p>
         {% endif %}
-    </div>
 
-    <div class="chart-area">
-        <div class="chart-container">
-            {% if chart_image_line %}
-                <h3>Emissions Over Time</h3>
-                <img src="data:image/png;base64,{{ chart_image_line }}" alt="Line Chart">
+        <div style="margin-top: 20px;">
+            <div style="width: 100%; margin-bottom: 20px;">
+                {% if chart_image_line %}
+                <h3 style="text-align: center;">Emissions Over Time</h3>
+                <div style="text-align: center;"><img src="data:image/png;base64,{{ chart_image_line }}" alt="Line Chart" style="max-width: 80%; height: auto;"></div>
                 {% if s3_line_url %}
-                    <p><a href="{{ s3_line_url }}" target="_blank">Download Line Chart</a></p>
+                <p style="text-align: center;"><a href="{{ s3_line_url }}" target="_blank" style="font-size: 1.2em;">Download Line Chart</a></p>
                 {% endif %}
-            {% endif %}
-        </div>
+                {% endif %}
+            </div>
 
-        <div class="chart-container">
-            {% if chart_image_bar %}
-                <h3>Emissions by Activity Type</h3>
-                <img src="data:image/png;base64,{{ chart_image_bar }}" alt="Bar Chart">
+            <div style="width: 100%; margin-bottom: 20px;">
+                {% if chart_image_bar %}
+                <h3 style="text-align: center;">Emissions by Activity Type</h3>
+                <div style="text-align: center;"><img src="data:image/png;base64,{{ chart_image_bar }}" alt="Bar Chart" style="max-width: 80%; height: auto;"></div>
                 {% if s3_bar_url %}
-                    <p><a href="{{ s3_bar_url }}" target="_blank">Download Bar Chart</a></p>
+                <p style="text-align: center;"><a href="{{ s3_bar_url }}" target="_button" style="font-size: 1.2em;">Download Bar Chart</a></p>
                 {% endif %}
-            {% endif %}
-        </div>
+                {% endif %}
+            </div>
 
-        <div class="chart-container">
-            {% if chart_image_pie %}
-                <h3>Emission Distribution</h3>
-                <img src="data:image/png;base64,{{ chart_image_pie }}" alt="Pie Chart">
+            <div style="width: 100%;">
+                {% if chart_image_pie %}
+                <h3 style="text-align: center;">Emission Distribution</h3>
+                <div style="text-align: center;"><img src="data:image/png;base64,{{ chart_image_pie }}" alt="Pie Chart" style="max-width: 80%; height: auto;"></div>
                 {% if s3_pie_url %}
-                    <p><a href="{{ s3_pie_url }}" target="_blank">Download Pie Chart</a></p>
+                <p style="text-align: center;"><a href="{{ s3_pie_url }}" target="_blank" style="font-size: 1.2em;">Download Pie Chart</a></p>
                 {% endif %}
-            {% endif %}
+                {% endif %}
+            </div>
         </div>
     </div>
 </div>
@@ -115,6 +116,9 @@
             "info": true,
             "order": [[0, 'asc']]
         });
+        
+        let end_date_width = $('#end_date_input').outerWidth();
+        $('#filter_button').css('width', end_date_width + 'px');
     });
 </script>
 

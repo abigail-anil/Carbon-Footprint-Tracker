@@ -17,7 +17,6 @@ from dotenv import load_dotenv
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/2.1/howto/deployment/checklist/
 
@@ -133,14 +132,6 @@ LOGIN_REDIRECT_URL = '/'
 
 LOGIN_URL = '/signin/'
 
-
-# For development: Additional static file locations
-STATICFILES_DIRS = [
-    os.path.join(BASE_DIR, 'static'),  # Global 'static' folder in the project directory
-]
-
-# For production: Directory to collect static files into
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')  # Collect static files to 'staticfiles' folder
 
 # URL to access static files in the browser
 STATIC_URL = '/static/'

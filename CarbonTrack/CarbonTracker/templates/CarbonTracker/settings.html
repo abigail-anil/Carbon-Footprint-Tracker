@@ -1,135 +1,65 @@
 {% extends "CarbonTracker/base_generic.html" %}
 
 {% block content %}
+<div style="display: flex; justify-content: center;">
+    <div style="width: 200px; background-color: #e0e0e0; padding: 10px; height: 100vh; font-size: 1.2em;">
+        <a href="{% url 'calculate_emission' %}" style="font-size: 1.2em; display: block; text-align: center;">Calculate Emission</a><br><br>
+        <a href="{% url 'emission_reports' %}" style="font-size: 1.2em; display: block; text-align: center;">Emission Reports</a>
+    </div>
+    <div style="flex-grow: 1; padding: 20px; font-size: 1.2em; display: flex; flex-direction: column; align-items: center;">
+        <h1 style="text-align: center; font-size: 1.5em;">User Settings</h1>
 
-<div class="sidebar">
-    <a href="{% url 'calculate_emission' %}">Calculate Emission</a>
-    <a href="{% url 'emission_reports' %}">Emission Reports</a>
-</div>
-<div class="content">
-    <h1>User Settings</h1>
+        <form id="settingsForm" method="post" style="margin-top: 20px; width: 300px;">
+            {% csrf_token %}
 
-    <form id="settingsForm" method="post">
-        {% csrf_token %}
+            <div style="text-align: center;">
+                <label for="electricityThreshold" style="display: block;">Electricity Threshold:</label>
+                <input type="number" id="electricityThreshold" name="electricityThreshold" required style="width: 100%;"><br><br>
 
-        <label for="electricityThreshold">Electricity Threshold:</label>
-        <input type="number" id="electricityThreshold" name="electricityThreshold" required><br><br>
+                <label for="flightThreshold" style="display: block;">Flight Threshold:</label>
+                <input type="number" id="flightThreshold" name="flightThreshold" required style="width: 100%;"><br><br>
 
-        <label for="flightThreshold">Flight Threshold:</label>
-        <input type="number" id="flightThreshold" name="flightThreshold" required><br><br>
+                <label for="shippingThreshold" style="display: block;">Shipping Threshold:</label>
+                <input type="number" id="shippingThreshold" name="shippingThreshold" required style="width: 100%;"><br><br>
 
-        <label for="shippingThreshold">Shipping Threshold:</label>
-        <input type="number" id="shippingThreshold" name="shippingThreshold" required><br><br>
+                <label for="emissionCheckFrequency" style="display: block;">Emission Check Frequency:</label>
+                <select id="emissionCheckFrequency" name="emissionCheckFrequency" style="width: 100%;">
+                    <option value="Never">Never</option>
+                    <option value="Monthly">Monthly</option>
+                </select><br><br>
+            </div>
 
-        <label for="emissionCheckFrequency">Emission Check Frequency:</label>
-        <select id="emissionCheckFrequency" name="emissionCheckFrequency">
-            <option value="Never">Never</option>
-            <option value="Monthly">Monthly</option>
-        </select><br><br>
+            <div style="text-align: center; margin-top: 10px;">
+                <button type="submit" style="background-color: #4CAF50; color: white; padding: 10px 20px; border: none; cursor: pointer; font-size: 1.2em;">Save Settings</button>
+            </div>
 
-        <div class="form-container">
-            <button type="submit">Save Settings</button>
-        </div>
-
-        <div id="settings-result">
-            {% if settings_error %}
-                <p style="color: red;">{{ settings_error }}</p>
-            {% endif %}
-            {% if settings_message %}
-                <p>{{ settings_message }}</p>
-            {% endif %}
-        </div>
-    </form>
-    {% if message %}
-    <p>{{ message }}</p>
-    {% endif %}
-
-    {% if not settings.subscribed %}
-    <form method="post">
-        {% csrf_token %}
-        <button type="submit" name="subscribe">Subscribe to Notifications</button>
-    </form>
-    {% else %}
-        {% if message == 'Subscription successful!' %}
-            <p>Subscription successful! Please check your email to confirm your subscription.</p>
-        {% else %}
-            <p>You are already subscribed to notifications.</p>
+            <div id="settings-result" style="margin-top: 20px; text-align: center;">
+                {% if settings_error %}
+                    <p style="color: red;">{{ settings_error }}</p>
+                {% endif %}
+                {% if settings_message %}
+                    <p>{{ settings_message }}</p>
+                {% endif %}
+            </div>
+        </form>
+        {% if message %}
+            <p style="text-align: center;">{{ message }}</p>
         {% endif %}
-    {% endif %}
 
+        {% if not settings.subscribed %}
+            <form method="post" style="margin-top: 20px; text-align: center;">
+                {% csrf_token %}
+                <button type="submit" name="subscribe" style="background-color: #4CAF50; color: white; padding: 10px 20px; border: none; cursor: pointer; font-size: 1.2em;">Subscribe to Notifications</button>
+            </form>
+        {% else %}
+            <div style="text-align: center;">
+                {% if message == 'Subscription successful!' %}
+                    <p>Subscription successful! Please check your email to confirm your subscription.</p>
+                {% else %}
+                    <p>You are already subscribed to notifications.</p>
+                {% endif %}
+            </div>
+        {% endif %}
+    </div>
 </div>
-
-<script src="https://cdn.jsdelivr.net/npm/core-js/stable/promise.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/core-js/stable/array/includes.js"></script>
-
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        fetch('/settings/')
-            .then(response => response.json())
-            .then(data => {
-                if (data.error) {
-                    alert(data.error);
-                } else {
-                    document.getElementById('electricityThreshold').value = data.settings.electricity_threshold || '';
-                    document.getElementById('flightThreshold').value = data.settings.flight_threshold || '';
-                    document.getElementById('shippingThreshold').value = data.settings.shipping_threshold || '';
-                    document.getElementById('emissionCheckFrequency').value = data.settings.emission_check_frequency || 'Never'; // Set default to 'Never'
-                }
-            });
-
-        document.getElementById('settingsForm').addEventListener('submit', function(event) {
-            event.preventDefault();
-
-            let electricity = document.getElementById('electricityThreshold').value;
-            let flight = document.getElementById('flightThreshold').value;
-            let shipping = document.getElementById('shippingThreshold').value;
-            let frequency = document.getElementById('emissionCheckFrequency').value;
-
-            if (isNaN(electricity) || electricity <= 0 ||
-                isNaN(flight) || flight <= 0 ||
-                isNaN(shipping) || shipping <= 0) {
-                alert("Thresholds must be positive numbers.");
-                return;
-            }
-
-            fetch('/settings/', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': getCookie('csrftoken')
-                },
-                body: JSON.stringify({
-                    electricityThreshold: electricity,
-                    flightThreshold: flight,
-                    shippingThreshold: shipping,
-                    emissionCheckFrequency: frequency
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if(data.error){
-                    document.getElementById("settings-result").innerHTML = `<p style = "color:red;"> ${data.error} </p>`
-                } else {
-                    document.getElementById("settings-result").innerHTML = `<p> ${data.message} </p>`
-                }
-            });
-        });
-
-        function getCookie(name) {
-            let cookieValue = null;
-            if (document.cookie && document.cookie !== '') {
-                const cookies = document.cookie.split(';');
-                for (let i = 0; i < cookies.length; i++) {
-                    const cookie = cookies[i].trim();
-                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                        break;
-                    }
-                }
-            }
-            return cookieValue;
-        }
-    });
-</script>
-
 {% endblock content %}

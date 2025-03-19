@@ -1,40 +1,27 @@
-{% load static %}
 <!DOCTYPE html>
 <html>
 <head>
-    {% load static %}
-    <link rel="stylesheet" type="text/css" href="{% static 'styles.css' %}">
-    
+    <title>Carbon Tracker</title>
 </head>
 <body>
-    <header>
-        <div class="header-content">
-            <div class="user-info">
+    <header style="background-color: #f0f0f0; padding: 10px;">
+        <div style="display: flex; justify-content: space-between;">
+            <div style="text-align: left; font-size: 1.2em;">
                 {% if user.is_authenticated %}
                     You are signed in as {{ user.username }}...
-                    <a href="{% url 'sign_out' %}">Sign out</a>
-                {% else %}
-                    <a href="{% url 'sign_in' %}">Sign in</a>
-                    <a href="{% url 'users:sign_up' %}">Sign up</a>
+                    <a href="{% url 'sign_out' %}" style="font-size: 1.2em;">Sign out</a>
                 {% endif %}
             </div>
-            <div class="settings-link">
+            <div style="text-align: right; font-size: 1.2em;">
                 {% if user.is_authenticated %}
-                    <a href="{% url 'settings' %}">Settings</a>
+                    <a href="{% url 'settings' %}" style="font-size: 1.2em;">Settings</a>
                 {% endif %}
             </div>
         </div>
     </header>
-    <div class="main-container">
-        <div class="sidebar">
-            <a href="{% url 'calculate_emission' %}">Calculate Emission</a>
-            <a href="{% url 'emission_reports' %}">Emission Reports</a>
-        </div>
-        <div class="content-wrapper">
-            {% block content %}
-            {% endblock %}
-        </div>
+    <div style="padding: 20px;">
+        {% block content %}
+        {% endblock %}
     </div>
-    <link rel="stylesheet" href="{% static 'styles.css' %}">
 </body>
 </html>

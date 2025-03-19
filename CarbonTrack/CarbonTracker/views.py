@@ -178,10 +178,8 @@ dynamodb = boto3.resource('dynamodb')
 table = dynamodb.Table('CarbonFootprint')
 
 def generate_chart(emissions, chart_type="line"):
-    # Create a new figure for the chart.
     plt.figure(figsize=(12, 6))
 
-    # Check if there is any emissions data to plot.
     if not emissions:
         print(f"No emissions data available for {chart_type} chart")
         return None
@@ -194,7 +192,6 @@ def generate_chart(emissions, chart_type="line"):
         plt.plot(timestamps, emissions_values, marker="o", linestyle="-", color="b")
         plt.xlabel("Date")
         plt.ylabel("Emissions (kg CO2e)")
-        #plt.title("Emissions Over Time")
         plt.xticks(rotation=45)
         plt.grid(True)
 
@@ -205,53 +202,40 @@ def generate_chart(emissions, chart_type="line"):
         plt.bar(activity_types, emissions_values, color="b")
         plt.xlabel("Activity Type")
         plt.ylabel("Emissions (kg CO2e)")
-        #plt.title(f"Emissions by Activity Type")
-        
 
     elif chart_type == "pie":
-        activity_types = list(set([e["activity_type"] for e in emissions]))
-        emissions_values = []
-        for at in activity_types:
-            total_carbon = 0
-            for e in emissions:
-                if e["activity_type"] == at:
-                    total_carbon += e["carbonKg"]
-                    print(f"Adding carbonKg value: {e['carbonKg']} for activity type {at}")
-            emissions_values.append(total_carbon)
+        activity_totals = {}
+        for e in emissions:
+            activity = e["activity_type"]
+            carbon = e["carbonKg"]
+            activity_totals[activity] = activity_totals.get(activity, 0) + carbon
 
-        plt.figure(figsize=(12, 8))
+        total_emissions = sum(activity_totals.values())
+        if total_emissions == 0:
+            return None
 
-        wedges, texts, autotexts = plt.pie(emissions_values, labels=activity_types, autopct='%1.3f%%', labeldistance=1.8)  # Adjust labeldistance
+        labels = list(activity_totals.keys())
+        values = list(activity_totals.values())
 
-        # Add annotations (arrows)
-        for i, wedge in enumerate(wedges):
-            angle = (wedge.theta1 + wedge.theta2) / 2
-            radius = wedge.r
-            x = radius * 1.15 * np.cos(np.deg2rad(angle))  # Adjust label position
-            y = radius * 1.15 * np.sin(np.deg2rad(angle))
-            label_x = radius * 1.8 * np.cos(np.deg2rad(angle)) #adjust label position
-            label_y = radius * 1.8 * np.sin(np.deg2rad(angle))
+        plt.figure(figsize=(8, 6))
+        wedges, texts, autotexts = plt.pie(values, autopct='%1.3f%%', textprops={'fontsize': 10})
+        plt.axis('equal')
 
-            plt.annotate(
-                texts[i].get_text(),
-                xy=(x, y),
-                xytext=(label_x, label_y),
-                arrowprops=dict(arrowstyle="-|>", connectionstyle="arc3,rad=0.2"),
-                horizontalalignment='center',
-                verticalalignment='center'
-            )
-        for text in texts:
-            text.set_visible(False) #hide original labels
-       # plt.title("Emission Distribution")
+        # Create legend with labels and percentages
+        legend_labels = [f"{label} ({value / total_emissions * 100:.3f}%)" for label, value in activity_totals.items()]
+        plt.legend(wedges, legend_labels, loc="best")
 
-    buf = BytesIO()
-    plt.savefig(buf, format="png")
-    buf.seek(0)
-    chart_image = base64.b64encode(buf.getvalue()).decode("utf-8")
-    buf.close()
-    plt.clf()
+        buf = BytesIO()
+        plt.savefig(buf, format="png", bbox_inches='tight')
+        buf.seek(0)
+        chart_image = base64.b64encode(buf.getvalue()).decode("utf-8")
+        buf.close()
+        plt.clf()
 
-    return chart_image
+        return chart_image
+
+    else:
+        return None
 
 
 def filter_and_sort_emissions(emissions, start_date, end_date, activity_type, sort_by, sort_order):
@@ -330,12 +314,16 @@ def emission_reports(request):
         expression_attribute_values = {':user_id': request.user.username}
         expression_attribute_names = None
 
+        print(f"Start Date String: {start_date}")
+        print(f"End Date String: {end_date}")
+
         try:
             #start_datetime = datetime.fromisoformat(start_date)
             start_datetime = datetime.fromisoformat(start_date) if start_date else None
             #end_datetime = datetime.fromisoformat(end_date)
             end_datetime = datetime.fromisoformat(end_date) if end_date else None
-            
+            print(f"Start Date isoString: {start_datetime}")
+            print(f"End Date isoString: {end_datetime}")
             if end_datetime:
                 # Extend the end date to 23:59:59 to include the whole day
                 end_datetime = end_datetime.replace(hour=23, minute=59, second=59)

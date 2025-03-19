@@ -1,16 +1,18 @@
 {% extends "CarbonTracker/base_generic.html" %}
 
 {% block content %}
-<div class="content">
-    <h2>🌍 Join the Green Revolution!</h2>
+<div style="text-align: center; font-size: 1.2em; padding: 20px;">
+    <h2 style="font-size: 1.5em;">🌍 Join the Green Revolution!</h2>
     <p>Track your carbon footprint and contribute to a sustainable future.</p>
 
-    <form method="POST">
+    <form method="POST" style="display: inline-block; text-align: left;">
         {% csrf_token %}
         {{ form.as_p }}
-        <button type="submit">Sign Up</button>
+        <div style="text-align: center;">
+            <button type="submit" style="font-size: 1.2em; background-color: #4CAF50; color: white; padding: 10px 20px; border: none; cursor: pointer;">Sign Up</button>
+        </div>
     </form>
 
-    <p>Already have an account? <a href="{% url 'sign_in' %}">Sign In</a></p>
+    <p>Already have an account? <a href="{% url 'sign_in' %}" style="font-size: 1.2em;">Sign In</a></p>
 </div>
 {% endblock content %}
