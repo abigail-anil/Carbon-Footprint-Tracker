@@ -221,23 +221,22 @@ def generate_chart(emissions, chart_type="line"):
         wedges, texts, autotexts = plt.pie(values, autopct='%1.3f%%', textprops={'fontsize': 10})
         plt.axis('equal')
 
-        # Create legend with labels and percentages
         legend_labels = [f"{label} ({value / total_emissions * 100:.3f}%)" for label, value in activity_totals.items()]
         plt.legend(wedges, legend_labels, loc="best")
-
-        buf = BytesIO()
-        plt.savefig(buf, format="png", bbox_inches='tight')
-        buf.seek(0)
-        chart_image = base64.b64encode(buf.getvalue()).decode("utf-8")
-        buf.close()
-        plt.clf()
-
-        return chart_image
 
     else:
         return None
 
+    # Save and return the chart for all chart types
+    buf = BytesIO()
+    plt.savefig(buf, format="png", bbox_inches='tight')
+    buf.seek(0)
+    chart_image = base64.b64encode(buf.getvalue()).decode("utf-8")
+    buf.close()
+    plt.clf()
 
+    return chart_image
+    
 def filter_and_sort_emissions(emissions, start_date, end_date, activity_type, sort_by, sort_order):
     if start_date:
         start_date = datetime.strptime(start_date, "%Y-%m-%d").date()
