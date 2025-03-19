@@ -123,11 +123,6 @@ USE_L10N = True
 USE_TZ = True
 
 
-# Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/2.1/howto/static-files/
-
-STATIC_URL = '/static/'
-
 AWS_REGION = 'us-east-1'
 
 
@@ -137,12 +132,19 @@ S3_BUCKET_NAME = os.getenv('S3_BUCKET_NAME','carbon-tracker-reports')
 LOGIN_REDIRECT_URL = '/'
 
 LOGIN_URL = '/signin/'
+
+
+STATIC_ROOT = os.path.join(BASE_DIR, 'static')  # Collect static files to this directory
+
+STATIC_URL = '/static/'
+
+# Where to collect static files in production
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')  # Collect all static files here
+
+# Additional locations for static files, if any
 STATICFILES_DIRS = [
-    os.path.join(BASE_DIR, 'static'),
+    os.path.join(BASE_DIR, 'static'),  # If you have a global static folder
 ]
-
-
-
 
 
 load_dotenv()

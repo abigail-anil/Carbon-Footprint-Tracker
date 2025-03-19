@@ -1,14 +1,16 @@
 {% extends "CarbonTracker/base_generic.html" %}
 
 {% block content %}
-<script src="https://polyfill.io/v3/polyfill.min.js?features=fetch"></script>
+<script src="https://cdn.jsdelivr.net/npm/core-js/stable/promise.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/core-js/stable/array/includes.js"></script>
+
 <div class="sidebar">
-            <a href="{% url 'calculate_emission' %}">Calculate Emission</a>
-            <a href="{% url 'emission_reports' %}">Emission Reports</a>
-        </div>
+    <a href="{% url 'calculate_emission' %}">Calculate Emission</a>
+    <a href="{% url 'emission_reports' %}">Emission Reports</a>
+</div>
 <div class="content">
     <h1>User Settings</h1>
-    
+
     <form id="settingsForm" method="post">
         {% csrf_token %}
 
