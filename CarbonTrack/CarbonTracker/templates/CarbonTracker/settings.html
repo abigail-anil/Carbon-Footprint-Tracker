@@ -1,8 +1,6 @@
 {% extends "CarbonTracker/base_generic.html" %}
 
 {% block content %}
-<script src="https://cdn.jsdelivr.net/npm/core-js/stable/promise.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/core-js/stable/array/includes.js"></script>
 
 <div class="sidebar">
     <a href="{% url 'calculate_emission' %}">Calculate Emission</a>
@@ -58,74 +56,80 @@
             <p>You are already subscribed to notifications.</p>
         {% endif %}
     {% endif %}
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            fetch('/settings/')
-                .then(response => response.json())
-                .then(data => {
-                    if (data.error) {
-                        alert(data.error);
-                    } else {
-                        document.getElementById('electricityThreshold').value = data.settings.electricity_threshold || '';
-                        document.getElementById('flightThreshold').value = data.settings.flight_threshold || '';
-                        document.getElementById('shippingThreshold').value = data.settings.shipping_threshold || '';
-                        document.getElementById('emissionCheckFrequency').value = data.settings.emission_check_frequency || 'Never'; // Set default to 'Never'
-                    }
-                });
 
-            document.getElementById('settingsForm').addEventListener('submit', function(event) {
-                event.preventDefault();
+</div>
 
-                let electricity = document.getElementById('electricityThreshold').value;
-                let flight = document.getElementById('flightThreshold').value;
-                let shipping = document.getElementById('shippingThreshold').value;
-                let frequency = document.getElementById('emissionCheckFrequency').value;
+<script src="https://cdn.jsdelivr.net/npm/core-js/stable/promise.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/core-js/stable/array/includes.js"></script>
 
-                if (isNaN(electricity) || electricity <= 0 ||
-                    isNaN(flight) || flight <= 0 ||
-                    isNaN(shipping) || shipping <= 0) {
-                    alert("Thresholds must be positive numbers.");
-                    return;
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        fetch('/settings/')
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    alert(data.error);
+                } else {
+                    document.getElementById('electricityThreshold').value = data.settings.electricity_threshold || '';
+                    document.getElementById('flightThreshold').value = data.settings.flight_threshold || '';
+                    document.getElementById('shippingThreshold').value = data.settings.shipping_threshold || '';
+                    document.getElementById('emissionCheckFrequency').value = data.settings.emission_check_frequency || 'Never'; // Set default to 'Never'
                 }
-
-                fetch('/settings/', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': getCookie('csrftoken')
-                    },
-                    body: JSON.stringify({
-                        electricityThreshold: electricity,
-                        flightThreshold: flight,
-                        shippingThreshold: shipping,
-                        emissionCheckFrequency: frequency
-                    })
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if(data.error){
-                        document.getElementById("settings-result").innerHTML = `<p style = "color:red;"> ${data.error} </p>`
-                    } else {
-                        document.getElementById("settings-result").innerHTML = `<p> ${data.message} </p>`
-                    }
-                });
             });
 
-            function getCookie(name) {
-                let cookieValue = null;
-                if (document.cookie && document.cookie !== '') {
-                    const cookies = document.cookie.split(';');
-                    for (let i = 0; i < cookies.length; i++) {
-                        const cookie = cookies[i].trim();
-                        if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                            break;
-                        }
+        document.getElementById('settingsForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+
+            let electricity = document.getElementById('electricityThreshold').value;
+            let flight = document.getElementById('flightThreshold').value;
+            let shipping = document.getElementById('shippingThreshold').value;
+            let frequency = document.getElementById('emissionCheckFrequency').value;
+
+            if (isNaN(electricity) || electricity <= 0 ||
+                isNaN(flight) || flight <= 0 ||
+                isNaN(shipping) || shipping <= 0) {
+                alert("Thresholds must be positive numbers.");
+                return;
+            }
+
+            fetch('/settings/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({
+                    electricityThreshold: electricity,
+                    flightThreshold: flight,
+                    shippingThreshold: shipping,
+                    emissionCheckFrequency: frequency
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if(data.error){
+                    document.getElementById("settings-result").innerHTML = `<p style = "color:red;"> ${data.error} </p>`
+                } else {
+                    document.getElementById("settings-result").innerHTML = `<p> ${data.message} </p>`
+                }
+            });
+        });
+
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
                     }
                 }
-                return cookieValue;
             }
-        });
-    </script>
-</div>
+            return cookieValue;
+        }
+    });
+</script>
+
 {% endblock content %}
