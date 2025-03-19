@@ -111,6 +111,27 @@ def create_dynamodb_table4(table_name, region_name="us-east-1"):
         print(f"Error creating table: {e}")
 
 
+def create_dynamodb_table5(table_name, region_name="us-east-1"):
+    """Creates the DynamoDB table."""
+    dynamodb = boto3.resource("dynamodb", region_name=region_name)
+    try:
+        table = dynamodb.create_table(
+            TableName=table_name,
+            KeySchema=[
+                {'AttributeName': 'model_id',
+                    'KeyType': 'HASH'  # Partition key
+            },],
+            AttributeDefinitions=[
+                {'AttributeName': 'model_id',
+                    'AttributeType': 'S'  # String
+                    },
+            ],
+            ProvisionedThroughput={"ReadCapacityUnits": 5, "WriteCapacityUnits": 5},
+        )
+        table.wait_until_exists()
+        print(f"Table {table_name} created successfully.")
+    except Exception as e:
+        print(f"Error creating table: {e}")
 
 
 
@@ -121,6 +142,8 @@ if __name__ == "__main__":
     create_dynamodb_table2("supported_countries", "us-east-1")
     create_dynamodb_table3("fuel_sources", "us-east-1")
     create_dynamodb_table4("user_settings", "us-east-1")
+    create_dynamodb_table5("VehicleModels", "us-east-1")
+    
     ''' bucket_name = os.environ.get("S3_BUCKET_NAME")
     table_name = os.environ.get("DYNAMODB_TABLE_NAME")
     topic_name = os.environ.get("SNS_TOPIC_NAME")
