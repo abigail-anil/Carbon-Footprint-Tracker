@@ -134,15 +134,16 @@ LOGIN_REDIRECT_URL = '/'
 LOGIN_URL = '/signin/'
 
 
-STATIC_ROOT = os.path.join(BASE_DIR, 'static')  # Collect static files to this directory
-
-STATIC_URL = '/static/'
-
-# Additional locations for static files, if any
+# For development: Additional static file locations
 STATICFILES_DIRS = [
-    os.path.join(BASE_DIR, 'static'),  # If you have a global static folder
+    os.path.join(BASE_DIR, 'static'),  # Global 'static' folder in the project directory
 ]
 
+# For production: Directory to collect static files into
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')  # Collect static files to 'staticfiles' folder
+
+# URL to access static files in the browser
+STATIC_URL = '/static/'
 
 load_dotenv()
 
