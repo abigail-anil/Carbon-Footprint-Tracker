@@ -1,6 +1,7 @@
 import requests  # for making HTTP requests
 from decimal import Decimal, InvalidOperation  # For precise decimal arithmetic and error handling
 import logging  # for debugging and monitoring
+import boto3
 
 logger = logging.getLogger(__name__)  # Initialize logger 
 
@@ -119,3 +120,75 @@ class Calculations:
         except Exception as e:
             logger.exception("Unexpected error in shipping calculation:")
             return None
+            
+            
+    def get_fuel_sources_from_dynamodb(self):
+        dynamodb = boto3.resource('dynamodb')
+        table = dynamodb.Table('fuel_sources')
+        response = table.scan()
+        return response.get('Items', [])
+        
+    def get_api_name_by_fuel_type(self, fuel_source_type):
+        """Retrieves the api_name for a given fuel_source_type from DynamoDB."""
+        dynamodb = boto3.resource('dynamodb')
+        fuel_sources_table = dynamodb.Table('fuel_sources')
+        response = fuel_sources_table.scan(
+            FilterExpression=boto3.dynamodb.conditions.Attr('fuel_source_type').eq(fuel_source_type)
+        )
+        items = response.get('Items', [])
+        if items:
+            return items[0].get('api_name')
+        return None
+
+    def calculate_fuel_combustion_emission(self, fuel_source_type, fuel_source_unit, fuel_source_value):
+        """Calculates fuel combustion emissions using the Carbon Interface API."""
+        api_name = self.get_api_name_by_fuel_type(fuel_source_type) # get api_name.
+        if not api_name:
+            print(f"Error: api_name not found for fuel_source_type: {fuel_source_type}")
+            return None
+
+        data = {
+            "type": "fuel_combustion",
+            "fuel_source_type": api_name, #use api_name here.
+            "fuel_source_unit": fuel_source_unit,
+            "fuel_source_value": float(fuel_source_value)
+        }
+        print(f"Request Data: {data}")
+        try:
+            response = requests.post(self.base_url, headers=self.headers, json=data)
+            print(f"response: {response}")
+            response.raise_for_status()
+            result = response.json()
+            print(f"result: {result}")
+            carbon_kg = result['data']['attributes']['carbon_kg']
+            print(f"Carbon emission= {carbon_kg}")
+            return Decimal(str(carbon_kg))
+        except requests.exceptions.RequestException as e:
+            print(f"Error during API request: {e}")
+            return None
+        except (KeyError, ValueError) as e:
+            print(f"Error parsing API response: {e}")
+            return None
+
+            
+    def get_unique_fuel_source_types(self):
+        """Retrieves unique fuel source types from DynamoDB."""
+        dynamodb = boto3.resource('dynamodb')
+        fuel_sources_table = dynamodb.Table('fuel_sources')
+        response = fuel_sources_table.scan()
+        items = response.get('Items', [])
+        fuel_source_types = set(item['fuel_source_type'] for item in items)
+        return list(fuel_source_types)
+
+    def get_units_by_fuel_type(self, fuel_type):
+        """Retrieves units for a specific fuel type."""
+        dynamodb = boto3.resource('dynamodb')
+        fuel_sources_table = dynamodb.Table('fuel_sources')
+        response = fuel_sources_table.scan(
+            FilterExpression=boto3.dynamodb.conditions.Attr('fuel_source_type').eq(fuel_type)
+        )
+        items = response.get('Items', [])
+        units = [item.get('unit') for item in items if item.get('unit')]
+        return units
+        
+    

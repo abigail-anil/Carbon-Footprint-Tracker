@@ -35,6 +35,8 @@
                     </p>
                 {% elif activity_type == 'shipping' %}
                     {{ form.as_p }}
+                {% elif activity_type == 'fuel_combustion' %}
+                    {{ form.as_p }}
                 {% endif %}
             </div>
 

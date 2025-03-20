@@ -1,0 +1,147 @@
+{
+    "Items": [
+        {
+            "unit": {
+                "S": "btu"
+            },
+            "api_name": {
+                "S": "dfo"
+            },
+            "fuel_source_id": {
+                "S": "2"
+            },
+            "fuel_source_type": {
+                "S": "Home Heating and Diesel Fuel(Distillate)"
+            }
+        },
+        {
+            "unit": {
+                "S": "gallon"
+            },
+            "api_name": {
+                "S": "dfo"
+            },
+            "fuel_source_id": {
+                "S": "2"
+            },
+            "fuel_source_type": {
+                "S": "Home Heating and Diesel Fuel(Distillate)"
+            }
+        },
+        {
+            "unit": {
+                "S": "btu"
+            },
+            "api_name": {
+                "S": "bit"
+            },
+            "fuel_source_id": {
+                "S": "1"
+            },
+            "fuel_source_type": {
+                "S": "Bituminous Coal"
+            }
+        },
+        {
+            "unit": {
+                "S": "short_ton"
+            },
+            "api_name": {
+                "S": "bit"
+            },
+            "fuel_source_id": {
+                "S": "1"
+            },
+            "fuel_source_type": {
+                "S": "Bituminous Coal"
+            }
+        },
+        {
+            "unit": {
+                "S": "btu"
+            },
+            "api_name": {
+                "S": "ng"
+            },
+            "fuel_source_id": {
+                "S": "5"
+            },
+            "fuel_source_type": {
+                "S": "Natural Gas"
+            }
+        },
+        {
+            "unit": {
+                "S": "thousand_cubic_feet"
+            },
+            "api_name": {
+                "S": "ng"
+            },
+            "fuel_source_id": {
+                "S": "5"
+            },
+            "fuel_source_type": {
+                "S": "Natural Gas"
+            }
+        },
+        {
+            "unit": {
+                "S": "btu"
+            },
+            "api_name": {
+                "S": "msw"
+            },
+            "fuel_source_id": {
+                "S": "4"
+            },
+            "fuel_source_type": {
+                "S": "Municipal Solid Waste"
+            }
+        },
+        {
+            "unit": {
+                "S": "short_ton"
+            },
+            "api_name": {
+                "S": "msw"
+            },
+            "fuel_source_id": {
+                "S": "4"
+            },
+            "fuel_source_type": {
+                "S": "Municipal Solid Waste"
+            }
+        },
+        {
+            "unit": {
+                "S": "btu"
+            },
+            "api_name": {
+                "S": "ker"
+            },
+            "fuel_source_id": {
+                "S": "3"
+            },
+            "fuel_source_type": {
+                "S": "Kerosene"
+            }
+        },
+        {
+            "unit": {
+                "S": "gallon"
+            },
+            "api_name": {
+                "S": "ker"
+            },
+            "fuel_source_id": {
+                "S": "3"
+            },
+            "fuel_source_type": {
+                "S": "Kerosene"
+            }
+        }
+    ],
+    "Count": 10,
+    "ScannedCount": 10,
+    "ConsumedCapacity": null
+}

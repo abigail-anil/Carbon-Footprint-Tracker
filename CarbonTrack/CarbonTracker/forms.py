@@ -28,4 +28,19 @@ class ActivityTypeForm(forms.Form):
         ('electricity', 'Electricity'),
         ('flight', 'Flight'),
         ('shipping', 'Shipping'),
+        ('fuel_combustion', 'Fuel Combustion'),
     ])
+    
+    
+class FuelCombustionForm(forms.Form):
+    fuel_source_type = forms.ChoiceField(label="Fuel Source Type")
+    fuel_source_unit = forms.ChoiceField(label="Fuel Source Unit")
+    fuel_source_value = forms.DecimalField(label="Fuel Source Value")
+    
+class SettingsForm(forms.Form):
+    electricity_threshold = forms.IntegerField(min_value=0, required=True)
+    flight_threshold = forms.IntegerField(min_value=0, required=True)
+    shipping_threshold = forms.IntegerField(min_value=0, required=True)
+    fuel_threshold = forms.IntegerField(min_value=0, required=True)
+    emission_check_frequency = forms.ChoiceField(choices=[('Never', 'Never'), ('Monthly', 'Monthly')], required=True)
+    

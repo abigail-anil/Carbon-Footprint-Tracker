@@ -5,7 +5,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup(
     name="carbon_footprint_cal",
-    version="1.0.0",
+    version="7.7.0",
     author="Abigail Anil",
     author_email="abigailanil19@gmail.com",
     description="A library for calculating carbon emissions and managing related data.",

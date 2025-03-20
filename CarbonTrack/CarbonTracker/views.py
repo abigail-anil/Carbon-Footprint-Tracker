@@ -1,11 +1,11 @@
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
-from .forms import ElectricityForm, FlightForm, ShippingForm, ActivityTypeForm
+from .forms import ElectricityForm, FlightForm, ShippingForm, ActivityTypeForm, FuelCombustionForm, SettingsForm
 from carbon_footprint_cal.emissions.calculations import Calculations
 from carbon_footprint_cal.data_storage.data_storage import DataStorage
 from carbon_footprint_cal.data_validation.validation import Validation
 from decimal import Decimal
-from .utils import get_supported_countries, subscribe_email_to_sns_topic, upload_chart_to_s3
+from .utils import get_supported_countries, subscribe_email_to_sns_topic, upload_chart_to_s3, unsubscribe_email_from_sns_topic
 from django.conf import settings
 from django.http import HttpResponse, JsonResponse
 from django.conf import settings as django_settings
@@ -107,7 +107,20 @@ def calculate_emission(request):
                 form = FlightForm(request.POST)
             elif activity_type == 'shipping':
                 form = ShippingForm(request.POST)
+            
+            elif activity_type == 'fuel_combustion':
+                form = FuelCombustionForm(request.POST)
+                fuel_sources = calculator.get_fuel_sources_from_dynamodb()
+                fuel_source_types = list(set([item['fuel_source_type'] for item in fuel_sources]))
+                form.fields['fuel_source_type'].choices = [(source, source) for source in fuel_source_types]
 
+                if request.POST.get('fuel_source_type'):
+                    selected_source_type = request.POST.get('fuel_source_type')
+                    
+                    available_units = calculator.get_units_by_fuel_type(selected_source_type)
+                    form.fields['fuel_source_unit'].choices = [(unit, unit) for unit in available_units]
+
+            
             if form and form.is_valid():
                 try:
                     if activity_type == 'electricity':
@@ -140,6 +153,23 @@ def calculate_emission(request):
                         input_params = {"weight_value": str(weight_value), "weight_unit": weight_unit,
                                         "distance_value": str(distance_value), "distance_unit": distance_unit,
                                         "transport_method": transport_method}
+                                        
+                    elif activity_type == 'fuel_combustion':
+                        fuel_source_type = form.cleaned_data['fuel_source_type']
+                        fuel_source_unit = form.cleaned_data['fuel_source_unit']
+                        fuel_source_value = int(form.cleaned_data['fuel_source_value']) 
+                        validation.validate_fuel_combustion_params(fuel_source_value)
+                        emission = calculator.calculate_fuel_combustion_emission(fuel_source_type, fuel_source_unit, fuel_source_value)
+
+                        if emission is not None:
+                            input_params = {
+                                "fuel_source_type": fuel_source_type,
+                                "fuel_source_unit": fuel_source_unit,
+                                "fuel_source_value": str(fuel_source_value)
+                            }
+                        else:
+                            emission = None
+
 
                     else:
                         emission = None
@@ -165,6 +195,21 @@ def calculate_emission(request):
             form = FlightForm()
         elif activity_type == 'shipping':
             form = ShippingForm()
+        elif activity_type == 'fuel_combustion':
+            form = FuelCombustionForm()
+            fuel_source_types = calculator.get_unique_fuel_source_types()
+            form.fields['fuel_source_type'].choices = [(source, source) for source in fuel_source_types]
+
+            if request.GET.get('fuel_source_type'):
+                selected_source_type = request.GET.get('fuel_source_type')
+                available_units = calculator.get_units_by_fuel_type(selected_source_type)
+                form.fields['fuel_source_unit'].choices = [(unit, unit) for unit in available_units]
+            else:
+                if fuel_source_types:
+                    selected_source_type = fuel_source_types[0]
+                    available_units = calculator.get_units_by_fuel_type(selected_source_type)
+                    form.fields['fuel_source_unit'].choices = [(unit, unit) for unit in available_units]
+
 
     return render(request, 'CarbonTracker/calculate.html', {
         'activity_form': activity_form,
@@ -399,6 +444,12 @@ def emission_reports(request):
                     'distance_unit': input_params.get('distance_unit', 'N/A'),
                     'weight_value': input_params.get('weight_value', 'N/A'),
                 }
+            elif item['activityType'] == 'fuel_combustion':
+                emission['input_params'] = {
+                    'fuel_source_type': input_params.get('fuel_source_type', 'N/A'),
+                    'fuel_source_unit': input_params.get('fuel_source_unit', 'N/A'),
+                    'fuel_source_value': input_params.get('fuel_source_value', 'N/A'),
+                }
             emissions_display.append(emission)
 
         #total_emissions = sum(item['carbonKg'] for item in emissions_display)
@@ -580,34 +631,20 @@ settings_table = dynamodb.Table('user_settings')
 def settings_view(request):
     user_id = request.user.username
 
-    if request.method == 'GET':
-        try:
-            settings_response = settings_table.get_item(Key={'userId': user_id})
-            settings = settings_response.get('Item', {
-                'electricity_threshold': 0,
-                'flight_threshold': 0,
-                'shipping_threshold': 0,
-                'emission_check_frequency': 'Never',
-                'subscribed': False
-            })
-            return render(request, 'CarbonTracker/settings.html', {'settings': settings})
-        except Exception as e:
-            return JsonResponse({'error': str(e)}, status=500)
+    try:
+        settings_response = settings_table.get_item(Key={'userId': user_id})
+        settings_data = settings_response.get('Item', {
+            'electricity_threshold': 0,
+            'flight_threshold': 0,
+            'shipping_threshold': 0,
+            'fuel_threshold': 0,
+            'emission_check_frequency': 'Never',
+            'subscribed': False
+        })
 
-    elif request.method == 'POST':
-        if 'subscribe' in request.POST:
-            try:
-                # Get the settings from the database first
-                settings_response = settings_table.get_item(Key={'userId': user_id})
-                settings = settings_response.get('Item', {
-                    'electricity_threshold': 0,
-                    'flight_threshold': 0,
-                    'shipping_threshold': 0,
-                    'emission_check_frequency': 'Never',
-                    'subscribed': False
-                })
-
-                topic_arn = django_settings.SNS_TOPIC_ARN # Access django settings
+        if request.method == 'POST':
+            if 'subscribe' in request.POST:
+                topic_arn = django_settings.SNS_TOPIC_ARN
                 email = request.user.email
 
                 if topic_arn and email:
@@ -617,42 +654,57 @@ def settings_view(request):
                         UpdateExpression="SET subscribed = :s",
                         ExpressionAttributeValues={':s': True}
                     )
-                    settings['subscribed'] = True #Update the dictionary, because we already have it.
-                    return render(request, 'CarbonTracker/settings.html', {'settings': settings, 'message': 'Subscription successful!'})
+                    settings_data['subscribed'] = True
+                    message = 'Subscription successful! Please check your email to confirm your subscription.'
                 else:
-                    return render(request, 'CarbonTracker/settings.html', {'settings': settings, 'message': 'Subscription failed. SNS topic or email not configured.'})
+                    message = 'Subscription failed. SNS topic or email not configured.'
+                return render(request, 'CarbonTracker/settings.html', {'settings': settings_data, 'message': message})
 
-            except Exception as e:
-                logger.error(f"SNS subscription error: {e}")
-                return render(request, 'CarbonTracker/settings.html', {'settings': settings, 'message': f'Subscription error: {e}'})
+            elif 'unsubscribe' in request.POST:
+                topic_arn = django_settings.SNS_TOPIC_ARN
+                email = request.user.email
 
-        else:
-            try:
-                data = json.loads(request.body)
-                electricity_threshold = Decimal(str(data['electricityThreshold']))
-                flight_threshold = Decimal(str(data['flightThreshold']))
-                shipping_threshold = Decimal(str(data['shippingThreshold']))
-                emission_check_frequency = data['emissionCheckFrequency']
+                if topic_arn and email:
+                    unsubscribe_email_from_sns_topic(topic_arn, email)
+                    settings_table.update_item(
+                        Key={'userId': user_id},
+                        UpdateExpression="SET subscribed = :s",
+                        ExpressionAttributeValues={':s': False}
+                    )
+                    settings_data['subscribed'] = False
+                    message = 'Unsubscription successful.'
+                else:
+                    message = 'Unsubscription failed. SNS topic or email not configured.'
 
-                settings_table.update_item(
-                    Key={'userId': user_id},
-                    UpdateExpression="set electricity_threshold = :e, flight_threshold = :f, shipping_threshold = :s, emission_check_frequency = :c",
-                    ExpressionAttributeValues={
-                        ':e': electricity_threshold,
-                        ':f': flight_threshold,
-                        ':s': shipping_threshold,
-                        ':c': emission_check_frequency
-                    },
-                    ReturnValues="UPDATED_NEW"
-                )
-                settings_response = settings_table.get_item(Key={'userId': user_id})
-                settings = settings_response.get('Item', {
-                    'electricity_threshold': electricity_threshold,
-                    'flight_threshold': flight_threshold,
-                    'shipping_threshold': shipping_threshold,
-                    'emission_check_frequency': emission_check_frequency,
-                    'subscribed': settings_response.get('Item',{'subscribed':False}).get('subscribed')
-                })
-                return JsonResponse({'message': 'Settings updated successfully'}, status=200)
-            except Exception as e:
-                return JsonResponse({'error': str(e)}, status=500)
+                form = SettingsForm(initial=settings_data)
+                return render(request, 'CarbonTracker/settings.html', {'settings': settings_data, 'message': message, 'form': form})
+
+            else:
+                form = SettingsForm(request.POST)
+                if form.is_valid():
+                    cleaned_data = form.cleaned_data
+                    settings_table.update_item(
+                        Key={'userId': user_id},
+                        UpdateExpression="set electricity_threshold = :e, flight_threshold = :f, shipping_threshold = :s, emission_check_frequency = :c, fuel_threshold = :fu",
+                        ExpressionAttributeValues={
+                            ':e': cleaned_data['electricity_threshold'],
+                            ':f': cleaned_data['flight_threshold'],
+                            ':s': cleaned_data['shipping_threshold'],
+                            ':fu': cleaned_data['fuel_threshold'],
+                            ':c': cleaned_data['emission_check_frequency']
+                        },
+                        ReturnValues="UPDATED_NEW"
+                    )
+                    settings_data.update(cleaned_data)
+                    message = 'Settings saved successfully.'
+                    return render(request, 'CarbonTracker/settings.html', {'form': SettingsForm(initial=settings_data), 'settings': settings_data, 'message': message})
+
+                else:
+                    return render(request, 'CarbonTracker/settings.html', {'form': form, 'settings': settings_data, 'form_errors': form.errors})
+
+        form = SettingsForm(initial=settings_data)
+        return render(request, 'CarbonTracker/settings.html', {'form': form, 'settings': settings_data})
+
+    except Exception as e:
+        logger.error(f"Settings error: {e}")
+        return render(request, 'CarbonTracker/settings.html', {'error': 'An unexpected error occurred.'})

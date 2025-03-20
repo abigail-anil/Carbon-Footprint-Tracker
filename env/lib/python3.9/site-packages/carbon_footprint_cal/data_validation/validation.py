@@ -82,3 +82,18 @@ class Validation:
         except (ValueError, InvalidOperation) as e:
             logger.error(f"Validation failed: {e}")
             raise ValueError(f"Validation failed: {e}")
+            
+    def validate_fuel_combustion_params(self, fuel_source_value):
+        """Validates fuel combustion parameters."""
+        try:
+            fuel_source_value = Decimal(str(fuel_source_value).strip())
+
+            if fuel_source_value <= 0:
+                logger.error("Validation failed: Fuel source value must be a positive number.")
+                raise ValueError("Fuel source value must be a positive number.")
+
+            logger.info(f"Fuel combustion validation successful: fuel_source_value={fuel_source_value}")
+            return True
+        except (ValueError, InvalidOperation) as e:
+            logger.error(f"Validation failed: {e}")
+            raise ValueError(f"Validation failed: {e}")

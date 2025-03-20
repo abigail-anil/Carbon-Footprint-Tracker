@@ -66,6 +66,39 @@ def subscribe_email_to_sns_topic(topic_arn, email_address, region="us-east-1"):
         logging.error(f"Error subscribing email {email_address} to SNS topic {topic_arn}: {e}")
         return None
         
+        
+def unsubscribe_email_from_sns_topic(topic_arn, email_address, region="us-east-1"):
+    """Unsubscribes an email address from an SNS topic."""
+    logging.info(f"Unsubscribing email {email_address} from SNS topic {topic_arn}.")
+
+    try:
+        sns = boto3.client('sns', region_name=region)
+        logging.debug(f"SNS client created for region: {region}")
+
+        # List subscriptions for the given topic ARN.
+        subscriptions_response = sns.list_subscriptions_by_topic(TopicArn=topic_arn)
+        subscriptions = subscriptions_response['Subscriptions']
+
+        # Find the subscription with the matching email address.
+        subscription_arn_to_unsubscribe = None
+        for subscription in subscriptions:
+            if subscription['Endpoint'] == email_address and subscription['Protocol'] == 'email':
+                subscription_arn_to_unsubscribe = subscription['SubscriptionArn']
+                break
+
+        if subscription_arn_to_unsubscribe:
+            # Unsubscribe the email address from the SNS topic.
+            response = sns.unsubscribe(SubscriptionArn=subscription_arn_to_unsubscribe)
+            logging.info(f"Email {email_address} successfully unsubscribed. Subscription ARN: {subscription_arn_to_unsubscribe}")
+            return True
+        else:
+            logging.warning(f"Email {email_address} not found as a subscriber to SNS topic {topic_arn}.")
+            return False
+
+    except Exception as e:
+        # Log any exceptions that occur during the unsubscription process.
+        logging.error(f"Error unsubscribing email {email_address} from SNS topic {topic_arn}: {e}")
+        return False
 
 '''Upload files to s3 bucket'''        
 # The S3 bucket name is accessed from Django settings which is loaded from a .env file
