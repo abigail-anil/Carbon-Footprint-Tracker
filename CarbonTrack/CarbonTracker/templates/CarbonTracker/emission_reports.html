@@ -21,6 +21,7 @@
                             <option value="flight" {% if activity_type == 'flight' %}selected{% endif %}>Flight</option>
                             <option value="shipping" {% if activity_type == 'shipping' %}selected{% endif %}>Shipping</option>
                             <option value="fuel_combustion" {% if activity_type == 'fuel_combustion' %}selected{% endif %}>Fuel Combustion</option>
+                            <option value="vehicle" {% if activity_type == 'vehicle' %}selected{% endif %}>Vehicle</option>
                         </select>
                     </label>
                 </div>
@@ -63,6 +64,8 @@
                         Transport: {{ emission.input_params.transport_method }}, Distance: {{ emission.input_params.distance_value }} {{ emission.input_params.distance_unit }}, Weight: {{ emission.input_params.weight_value }} {{ emission.input_params.weight_unit }}
                         {% elif emission.activity_type == 'fuel_combustion' %}
                         Fuel Source Type: {{ emission.input_params.fuel_source_type }}, Fuel Source Unit: {{ emission.input_params.fuel_source_unit }}, Fuel Source Value: {{ emission.input_params.fuel_source_value }}
+                        {% elif emission.activity_type == 'vehicle' %}
+                        Distance Value: {{ emission.input_params.distance_value }}, Distance Unit: {{ emission.input_params.distance_unit }}, Vehicle Model: {{ emission.input_params.vehicle_model }}
                         {% endif %}
                     </td>
                     <td>{{ emission.carbonKg }}</td>

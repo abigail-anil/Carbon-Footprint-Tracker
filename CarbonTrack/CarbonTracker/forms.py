@@ -1,4 +1,5 @@
 from django import forms
+from django.core.validators import MinValueValidator
 
 class ElectricityForm(forms.Form):
     location = forms.ChoiceField(choices=[])  # This will be updated dynamically
@@ -29,6 +30,7 @@ class ActivityTypeForm(forms.Form):
         ('flight', 'Flight'),
         ('shipping', 'Shipping'),
         ('fuel_combustion', 'Fuel Combustion'),
+        ('vehicle', 'Vehicle'),
     ])
     
     
@@ -42,5 +44,23 @@ class SettingsForm(forms.Form):
     flight_threshold = forms.IntegerField(min_value=0, required=True)
     shipping_threshold = forms.IntegerField(min_value=0, required=True)
     fuel_threshold = forms.IntegerField(min_value=0, required=True)
+    vehicle_threshold = forms.IntegerField(min_value=0, required=True)
     emission_check_frequency = forms.ChoiceField(choices=[('Never', 'Never'), ('Monthly', 'Monthly')], required=True)
     
+
+class VehicleForm(forms.Form):
+    """Form for vehicle-related emissions."""
+    vehicle_make = forms.ChoiceField(choices=[], label="Vehicle Make")  # Populated dynamically
+    vehicle_model = forms.ChoiceField(choices=[], label="Vehicle Model")  # Populated dynamically
+    distance_value = forms.DecimalField(min_value=0, label="Distance Traveled")
+    distance_unit = forms.ChoiceField(choices=[('km', 'Kilometers'), ('mi', 'Miles')], label="Distance Unit")
+
+    def __init__(self, *args, **kwargs):
+        # Populate vehicle_make and vehicle_model choices dynamically
+        makes = kwargs.pop('makes', [])  # Pass makes from the view
+        models = kwargs.pop('models', [])  # Pass models from the view
+        super(VehicleForm, self).__init__(*args, **kwargs)
+
+        # Update choices for vehicle_make and vehicle_model
+        self.fields['vehicle_make'].choices = makes
+        self.fields['vehicle_model'].choices = models

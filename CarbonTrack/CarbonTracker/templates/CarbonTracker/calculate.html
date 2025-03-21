@@ -6,6 +6,7 @@
         <a href="{% url 'calculate_emission' %}" style="font-size: 1.2em;">Calculate Emission</a><br><br>
         <a href="{% url 'emission_reports' %}" style="font-size: 1.2em;">Emission Reports</a>
     </div>
+
     <div style="padding: 20px; flex-grow: 1; font-size: 1.2em;">
         <h1 style="text-align: center; font-size: 1.5em;">Carbon Footprint Tracker</h1>
 
@@ -37,6 +38,33 @@
                     {{ form.as_p }}
                 {% elif activity_type == 'fuel_combustion' %}
                     {{ form.as_p }}
+                {% elif activity_type == 'vehicle' %}
+                    <p>
+                        {{ form.vehicle_make.label_tag }}
+                        <select name="vehicle_make" id="id_vehicle_make">
+                            {% for make in form.vehicle_make.field.choices %}
+                                <option value="{{ make.0 }}" {% if make.0 == request.GET.vehicle_make %}selected{% endif %}>
+                                    {{ make.1 }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </p>
+
+                    {% if request.GET.vehicle_make or request.POST.vehicle_make %}
+                        <p>
+                            {{ form.vehicle_model.label_tag }}
+                            {{ form.vehicle_model }}
+                        </p>
+
+                        <p>
+                            {{ form.distance_value.label_tag }}
+                            {{ form.distance_value }}
+                        </p>
+                        <p>
+                            {{ form.distance_unit.label_tag }}
+                            {{ form.distance_unit }}
+                        </p>
+                    {% endif %}
                 {% endif %}
             </div>
 
@@ -47,7 +75,11 @@
             <div id="emission-result" style="margin-top: 20px; text-align: center;">
                 {% if form.errors %}
                     <div style="color: red;">
-                        {{ form.errors }}
+                        {% for field, errors in form.errors.items %}
+                            {% for error in errors %}
+                                <p>{{ field|title }}: {{ error }}</p>
+                            {% endfor %}
+                        {% endfor %}
                     </div>
                 {% endif %}
                 {% if error %}
@@ -62,6 +94,7 @@
 
         <script>
             document.addEventListener('DOMContentLoaded', () => {
+                // Handle activity type change
                 const activitySelect = document.getElementById('id_activity_type');
                 if (activitySelect) {
                     activitySelect.addEventListener('change', () => {
@@ -69,6 +102,43 @@
                         const url = new URL(window.location.href);
                         url.searchParams.set('activity_type', selectedActivity);
                         window.location.href = url.href;
+                    });
+                }
+
+                // Handle vehicle make change
+                const makeSelect = document.getElementById('id_vehicle_make');
+                if (makeSelect) {
+                    makeSelect.addEventListener('change', (event) => {
+                        event.preventDefault();
+                        const url = new URL(window.location.href);
+                        url.searchParams.set('vehicle_make', makeSelect.value);
+                        url.searchParams.set('activity_type', 'vehicle'); // Force activity_type to 'vehicle'
+                        window.location.href = url.href;
+                    });
+                }
+
+                // Prevent form submission if required fields are empty
+                const calculateButton = document.querySelector('button[type="submit"]');
+                if (calculateButton) {
+                    calculateButton.addEventListener('click', (event) => {
+                        const vehicleModel = document.getElementById('id_vehicle_model');
+                        const distanceValue = document.getElementById('id_distance_value');
+                        const distanceUnit = document.getElementById('id_distance_unit');
+
+                        if (vehicleModel && vehicleModel.value === '') {
+                            alert('Please select a vehicle model.');
+                            event.preventDefault();
+                        }
+
+                        if (distanceValue && distanceValue.value === '') {
+                            alert('Please enter a distance value.');
+                            event.preventDefault();
+                        }
+
+                        if (distanceUnit && distanceUnit.value === '') {
+                            alert('Please select a distance unit.');
+                            event.preventDefault();
+                        }
                     });
                 }
             });

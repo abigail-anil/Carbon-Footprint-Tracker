@@ -1,6 +1,6 @@
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
-from .forms import ElectricityForm, FlightForm, ShippingForm, ActivityTypeForm, FuelCombustionForm, SettingsForm
+from .forms import ElectricityForm, FlightForm, ShippingForm, ActivityTypeForm, FuelCombustionForm, SettingsForm, VehicleForm
 from carbon_footprint_cal.emissions.calculations import Calculations
 from carbon_footprint_cal.data_storage.data_storage import DataStorage
 from carbon_footprint_cal.data_validation.validation import Validation
@@ -20,6 +20,7 @@ import base64
 import csv
 import json
 import logging
+import boto3
 
 logger = logging.getLogger(__name__)
 
@@ -76,6 +77,8 @@ else:
 data_storage = DataStorage(table_name="CarbonFootprint")
 validation = Validation()
 
+dynamodb = boto3.resource('dynamodb')
+table = dynamodb.Table('VehicleModels')
 
 @login_required
 def calculate_emission(request):
@@ -119,6 +122,18 @@ def calculate_emission(request):
                     
                     available_units = calculator.get_units_by_fuel_type(selected_source_type)
                     form.fields['fuel_source_unit'].choices = [(unit, unit) for unit in available_units]
+                    
+            elif activity_type == 'vehicle':
+                form = VehicleForm(request.POST)
+                makes = calculator.get_vehicle_makes_from_dynamodb()
+
+                if makes:
+                    form.fields['vehicle_make'].choices = [(make, make) for make in makes]
+
+                if request.POST.get('vehicle_make'):
+                    vehicle_make = request.POST.get('vehicle_make')
+                    models = calculator.get_vehicle_models_from_dynamodb(vehicle_make)
+                    form.fields['vehicle_model'].choices = [(model['id'], model['name']) for model in models]
 
             
             if form and form.is_valid():
@@ -167,8 +182,34 @@ def calculate_emission(request):
                                 "fuel_source_unit": fuel_source_unit,
                                 "fuel_source_value": str(fuel_source_value)
                             }
-                        else:
-                            emission = None
+                    
+                    elif activity_type == 'vehicle':
+                        distance_value = form.cleaned_data['distance_value']
+                        distance_unit = form.cleaned_data['distance_unit']
+                        vehicle_model_id = form.cleaned_data['vehicle_model']
+                        
+                        emission = calculator.calculate_vehicle_emission(distance_value, distance_unit, vehicle_model_id)
+                        
+                        # Fetch the vehicle model name
+                        vehicle_make = request.POST.get('vehicle_make')
+                        models = calculator.get_vehicle_models_from_dynamodb(vehicle_make)
+                        vehicle_model_name = None  # Initialize to None
+
+                        for model in models:
+                            if str(model['id']).strip() == str(vehicle_model_id).strip():
+                                vehicle_model_name = model['name']  # Store the name directly
+                                #print(f"vehicle_model_name = {vehicle_model_name}")
+                                break  # Exit the loop once found
+
+                        emission = calculator.calculate_vehicle_emission(distance_value, distance_unit, vehicle_model_id)
+                        #print(f"vehicle_model_name = {vehicle_model_name}")
+                        input_params = {
+                        "distance_value": str(distance_value),
+                        "distance_unit": distance_unit,
+                        "vehicle_model": vehicle_model_name,  # Store the name
+                        }
+                        
+                        #input_params = {"distance_value": str(distance_value), "distance_unit": distance_unit, "vehicle_model_id": vehicle_model_id}
 
 
                     else:
@@ -209,7 +250,23 @@ def calculate_emission(request):
                     selected_source_type = fuel_source_types[0]
                     available_units = calculator.get_units_by_fuel_type(selected_source_type)
                     form.fields['fuel_source_unit'].choices = [(unit, unit) for unit in available_units]
+                    
+        elif activity_type == 'vehicle':
+            form = VehicleForm()
+            makes = calculator.get_vehicle_makes_from_dynamodb()
 
+            if makes:
+                #form.fields['vehicle_make'].choices = [(make, make) for make in makes]
+                form.fields['vehicle_make'].choices = [('', '---------')] + [(make, make) for make in makes] #added default option to make
+
+                if request.GET.get('vehicle_make'):
+                    vehicle_make = request.GET.get('vehicle_make')
+                    models = calculator.get_vehicle_models_from_dynamodb(vehicle_make)
+                    form.fields['vehicle_model'].choices = [('', '---------')] + [(model['id'], model['name']) for model in models]
+                    #form.fields['vehicle_model'].choices = [(model['id'], model['name']) for model in models]
+                else:
+                    form.fields['vehicle_model'].choices = [('', '---------')] #set model choices to default if no make is selected.
+			
 
     return render(request, 'CarbonTracker/calculate.html', {
         'activity_form': activity_form,
@@ -450,6 +507,13 @@ def emission_reports(request):
                     'fuel_source_unit': input_params.get('fuel_source_unit', 'N/A'),
                     'fuel_source_value': input_params.get('fuel_source_value', 'N/A'),
                 }
+            elif item['activityType'] == 'vehicle':
+                
+                emission['input_params'] = {
+                    'distance_value': input_params.get('distance_value', 'N/A'),
+                    'distance_unit': input_params.get('distance_unit', 'N/A'),
+                    'vehicle_model': input_params.get('vehicle_model', 'N/A'),
+                }
             emissions_display.append(emission)
 
         #total_emissions = sum(item['carbonKg'] for item in emissions_display)
@@ -597,6 +661,20 @@ def export_csv(request):
                     'distance_unit': input_params.get('distance_unit', 'N/A'),
                     'weight_value': input_params.get('weight_value', 'N/A'),
                 }
+            elif item['activityType'] == 'fuel_combustion':
+                emission['input_params'] = {
+                    'transport_method': input_params.get('transport_method', 'N/A'),
+                    'distance_value': input_params.get('distance_value', 'N/A'),
+                    'weight_unit': input_params.get('weight_unit', 'N/A'),
+                    'distance_unit': input_params.get('distance_unit', 'N/A'),
+                    'weight_value': input_params.get('weight_value', 'N/A'),
+                }
+            elif item['activityType'] == 'vehicle':
+                emission['input_params'] = {
+                    'distance_value': input_params.get('distance_value', 'N/A'),
+                    'distance_unit': input_params.get('distance_unit', 'N/A'),
+                    'vehicle_model_id': input_params.get('vehicle_model_id', 'N/A'),
+                }
             emissions_display.append(emission)
 
     if not emissions_display:
@@ -638,6 +716,7 @@ def settings_view(request):
             'flight_threshold': 0,
             'shipping_threshold': 0,
             'fuel_threshold': 0,
+            'vehicle_threshold': 0,
             'emission_check_frequency': 'Never',
             'subscribed': False
         })
@@ -685,12 +764,13 @@ def settings_view(request):
                     cleaned_data = form.cleaned_data
                     settings_table.update_item(
                         Key={'userId': user_id},
-                        UpdateExpression="set electricity_threshold = :e, flight_threshold = :f, shipping_threshold = :s, emission_check_frequency = :c, fuel_threshold = :fu",
+                        UpdateExpression="set electricity_threshold = :e, flight_threshold = :f, shipping_threshold = :s, emission_check_frequency = :c, fuel_threshold = :fu, vehicle_threshold =:v",
                         ExpressionAttributeValues={
                             ':e': cleaned_data['electricity_threshold'],
                             ':f': cleaned_data['flight_threshold'],
                             ':s': cleaned_data['shipping_threshold'],
                             ':fu': cleaned_data['fuel_threshold'],
+                            ':v': cleaned_data['vehicle_threshold'],
                             ':c': cleaned_data['emission_check_frequency']
                         },
                         ReturnValues="UPDATED_NEW"
