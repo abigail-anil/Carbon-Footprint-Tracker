@@ -9,7 +9,7 @@ blessed==1.20.0
 boto3==1.37.11
 build==1.2.2.post1
 cached-property==1.5.2
-carbon_footprint_cal==1.0.0
+carbon_footprint_cal==2.0.0
 cement==2.10.14
 certifi==2025.1.31
 cffi==1.17.1
