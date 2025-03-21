@@ -97,3 +97,27 @@ class Validation:
         except (ValueError, InvalidOperation) as e:
             logger.error(f"Validation failed: {e}")
             raise ValueError(f"Validation failed: {e}")
+            
+    def validate_vehicle_params(self, distance_value, distance_unit, vehicle_model_id):
+        """Validates vehicle parameters."""
+        logger.info(f"Validating vehicle: distance_value={distance_value}, distance_unit={distance_unit}, vehicle_model_id={vehicle_model_id}")
+
+        try:
+            distance_value = Decimal(str(distance_value).strip())  # Convert to Decimal and remove whitespace
+            if distance_value <= 0:
+                logger.error("Validation failed: Distance value must be positive.")
+                raise ValueError("Distance value must be a positive number.")
+        except (ValueError, InvalidOperation):
+            logger.error("Validation failed: Distance value must be a valid number.")
+            raise ValueError("Distance value must be a valid number.")
+
+        if distance_unit.lower() not in ["mi", "km"]:
+            logger.error("Validation failed: Invalid distance unit.")
+            raise ValueError("Invalid distance unit. Must be 'mi' or 'km'.")
+
+        if not vehicle_model_id:
+            logger.error("Validation failed: Vehicle model ID is required.")
+            raise ValueError("Vehicle model ID is required.")
+
+        logger.info("Vehicle validation successful.")
+        return True

@@ -6,17 +6,14 @@ This library provides tools for calculating and tracking carbon emissions, integ
 
 ## Features
 
-* **Carbon Emission Calculation:** Calculates carbon emissions for various activity types (electricity, transportation, food) using the Carbon Interface API.
+* **Carbon Emission Calculation:** Calculates carbon emissions for various activity types (electricity, flight, shipping, fuel combustion and vehicles) using the Carbon Interface API.
 * **AWS Integration:** Integrates with AWS DynamoDB for persistent data storage.
-* **Data Storage:** Stores carbon emission data (user ID, activity type, value, emission) in a DynamoDB table.
+* **Data Storage:** Stores carbon emission data in a DynamoDB table.
 * **Data Validation:** Ensures data integrity through validation of required fields and data types.
-* **Automatic API Key Handling:** Automatically retrieves the Carbon Interface API key from environment variables, especially useful in AWS Lambda.
 * **Modular Design:** Organized into reusable modules for calculations, data storage, and validation.
 * **Environment Variable Configuration:** Designed to be configured via environment variables.
 
 ## Installation
-
-**If you have uploaded the library to PyPI:**
 
 ```bash
 pip install carbon_footprint_cal
@@ -39,7 +36,7 @@ carbon_calculator = Calculations(carbon_interface_api_key)
 # Electricity Calculation
 electricity_value = 100  # kWh or mwh
 location = "US-CA"  # Example: "country-state"
-electricity_emission = carbon_calculator.calculate_electricity_emission(electricity_value, location, unit="kwh") #unit is optional, and defaults to kwh.
+electricity_emission = carbon_calculator.calculate_electricity_emission({"value": electricity_value, "location": location, "unit": "kwh"})
 print(f"Calculated electricity emission: {electricity_emission} kg CO2e")
 
 # Flight Calculation
@@ -56,25 +53,23 @@ distance_unit = "km"
 transport_method = "truck"
 shipping_emission = carbon_calculator.calculate_shipping_emission(weight_value, weight_unit, distance_value, distance_unit, transport_method)
 print(f"Calculated shipping emission: {shipping_emission} kg CO2e")
+
+# Fuel Combustion Calculation
+fuel_source_type = "natural_gas" #Example
+fuel_source_unit = "mwh" #Example
+fuel_source_value = 100 #Example
+fuel_emission = carbon_calculator.calculate_fuel_combustion_emission(fuel_source_type, fuel_source_unit, fuel_source_value)
+print(f"Calculated fuel combustion emission: {fuel_emission} kg CO2e")
+
+# Vehicle Calculation
+distance_value = 100 #Example
+distance_unit = "km" #Example
+vehicle_model_id = "72c68172-aa91-4221-a084-5731efc79c68" #Example
+vehicle_emission = carbon_calculator.calculate_vehicle_emission(distance_value, distance_unit, vehicle_model_id)
+print(f"Calculated vehicle emission: {vehicle_emission} kg CO2e")
 ```
 
-### AWS Lambda Environment:
 
-If you configure the CARBON_INTERFACE_API_KEY environment variable in your Lambda function's settings, you can simplify the code:
-
-```python
-
-from carbon_footprint_cal.emissions.calculations import Calculations
-
-def lambda_handler(event, context):
-    carbon_calculator = Calculations() #The API key is automatically retrieved.
-    emission = carbon_calculator.calculate_emission("electricity", 100, location="US")
-    return {
-        'statusCode': 200,
-        'body': f'Emission: {emission}'
-    }
-```
-    
 ### Data Storage
 ```python
 
@@ -122,6 +117,20 @@ try:
     print("Shipping data is valid")
 except ValueError as e:
     print(f"Shipping data is invalid: {e}")
+    
+# Example: Fuel Combustion validation
+try:
+    validation.validate_fuel_combustion_params("natural_gas", "mwh", 100)
+    print("Fuel Combustion data is valid")
+except ValueError as e:
+    print(f"Fuel Combustion data is invalid: {e}")
+
+# Example: Vehicle validation
+try:
+    validation.validate_vehicle_params(100, "km", "72c68172-aa91-4221-a084-5731efc79c68")
+    print("Vehicle data is valid")
+except ValueError as e:
+    print(f"Vehicle data is invalid: {e}")
 ```
     
 ### Data Storage
@@ -144,11 +153,14 @@ Usage: The validation module provides a method to validate data.
 * boto3
 * os
 * logging
-* requests_mock (for testing)
 
-## Environment Variables
-CARBON_INTERFACE_API_KEY: Your Carbon Interface API key.
-DYNAMODB_TABLE_NAME: (Optional) The name of the DynamoDB table to use.
+
+## DynamoDB Data
+
+The fuel combustion and vehicle calculations rely on data stored in DynamoDB tables. Ensure that you have the following tables set up:
+
+* `fuel_sources`: Contains fuel source types and their corresponding API names.
+* `VehicleModels`: Contains vehicle makes and models.
 
 ## License
 This project is licensed under the MIT License. See the LICENSE file for details.

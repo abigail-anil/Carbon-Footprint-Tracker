@@ -2,6 +2,8 @@ import requests  # for making HTTP requests
 from decimal import Decimal, InvalidOperation  # For precise decimal arithmetic and error handling
 import logging  # for debugging and monitoring
 import boto3
+from boto3.dynamodb.conditions import Attr
+import json
 
 logger = logging.getLogger(__name__)  # Initialize logger 
 
@@ -14,6 +16,7 @@ class Calculations:
             "Authorization": f"Bearer {self.api_key}", 
             "Content-Type": "application/json",  
         }
+        
 
     def calculate_electricity_emission(self, api_data):
         """Calculates electricity emissions using provided API data."""
@@ -191,4 +194,74 @@ class Calculations:
         units = [item.get('unit') for item in items if item.get('unit')]
         return units
         
-    
+    def get_vehicle_makes_from_dynamodb(self):
+        """Fetches distinct vehicle makes from DynamoDB."""
+        try:
+            logger.debug("Fetching vehicle makes from DynamoDB...")
+            dynamodb = boto3.resource('dynamodb')
+            table = dynamodb.Table('VehicleModels')
+            logger.debug(f"DynamoDB table: {table.name}")
+            response = table.scan(ProjectionExpression='vehicle_make')
+            logger.debug(f"DynamoDB scan response: {response}")
+            makes = set(item['vehicle_make'] for item in response['Items'])
+            logger.debug(f"Distinct vehicle makes found: {makes}")
+            sorted_makes = sorted(list(makes))
+            logger.debug(f"Sorted vehicle makes: {sorted_makes}")
+            return sorted_makes
+        except Exception as e:
+            logger.error(f"Error fetching vehicle makes from DynamoDB: {e}")
+            print(f"Error fetching vehicle makes: {e}")
+            return []
+
+    def get_vehicle_models_from_dynamodb(self, vehicle_make):
+        """Fetches vehicle models for a given make from DynamoDB."""
+        try:
+            logger.debug(f"Fetching vehicle models for make: {vehicle_make} from DynamoDB...")
+            dynamodb = boto3.resource('dynamodb')
+            table = dynamodb.Table('VehicleModels')
+            logger.debug(f"DynamoDB table: {table.name}")
+            response = table.scan(
+                FilterExpression=Attr('vehicle_make').eq(vehicle_make),
+                ProjectionExpression='#n, model_id',
+                ExpressionAttributeNames={'#n': 'name'}
+            )
+            logger.debug(f"DynamoDB scan response: {response}")
+            models = [{'name': item['name'], 'id': item['model_id']} for item in response['Items']]
+            logger.debug(f"Vehicle models found: {models}")
+            return models
+        except Exception as e:
+            logger.error(f"Error fetching vehicle models from DynamoDB: {e}")
+            print(f"Error fetching vehicle models: {e}")
+            return []
+
+    def calculate_vehicle_emission(self, distance_value, distance_unit, vehicle_model_id):
+        """Calculates vehicle emissions using the Carbon Interface API."""
+        logger.debug(f"Calculating vehicle emission for distance: {distance_value} {distance_unit}, model ID: {vehicle_model_id}")
+        print(f"Calculating vehicle emission for distance: {distance_value} {distance_unit}, model ID: {vehicle_model_id}")
+        #distance_value_decimal = Decimal(str(distance_value).strip())
+        #logger.debug(f"Distance value as Decimal: {distance_value_decimal}")
+
+        payload = {
+                "type": "vehicle",
+                "distance_unit": distance_unit,
+                "distance_value": float(distance_value),
+                "vehicle_model_id": vehicle_model_id,
+        }
+        logger.debug(f"API payload: {payload}")
+        print(f"Request Payload: {payload}")
+        try:
+            response = requests.post(self.base_url, headers=self.headers, json=payload)
+            print(f"response: {response}")
+            response.raise_for_status()
+            result = response.json()
+            print(f"result: {result}")
+            carbon_kg = result['data']['attributes']['carbon_kg']
+            print(f"Carbon emission= {carbon_kg}")
+            return Decimal(str(carbon_kg))
+        except requests.exceptions.RequestException as e:
+            print(f"Error during API request: {e}")
+            return None
+        except (KeyError, ValueError) as e:
+            print(f"Error parsing API response: {e}")
+            return None
+                

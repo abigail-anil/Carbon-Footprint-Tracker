@@ -5,3 +5,6 @@ Version 1.0.0 (2025-02-27)
 - Added: AWS DynamoDB integration for data storage.
 - Added: integration with carbon interface api.
 
+Version 1.0.0 (2025-03-18)
+--------------------------
+- Added: Carbon emission calculation for fuel combustion and vehicles.
