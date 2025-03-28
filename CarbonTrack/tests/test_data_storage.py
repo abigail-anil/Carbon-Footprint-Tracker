@@ -1,5 +1,7 @@
 import unittest
 from unittest.mock import patch, MagicMock
+import boto3
+boto3.setup_default_session(region_name='us-east-1')
 from carbon_footprint_cal.data_storage.data_storage import DataStorage
 from decimal import Decimal
 

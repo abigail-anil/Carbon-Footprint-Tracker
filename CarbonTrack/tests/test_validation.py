@@ -1,5 +1,7 @@
 import unittest
 from decimal import Decimal
+import boto3
+boto3.setup_default_session(region_name='us-east-1')
 from carbon_footprint_cal.data_validation.validation import Validation
 
 class TestValidation(unittest.TestCase):
