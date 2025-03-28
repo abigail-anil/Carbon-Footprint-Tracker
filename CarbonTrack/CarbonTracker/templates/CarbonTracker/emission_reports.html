@@ -169,36 +169,36 @@
 
     // Inline delete functionality using AJAX
     $('.delete-button').on('click', function() {
-      if (confirm("Are you sure you want to delete this emission record?")) {
+    if (confirm("Are you sure you want to delete this emission record?")) {
         var button = $(this);
         var rawTimestamp = button.data('timestamp');
         $.ajax({
-          url: "{% url 'delete_emission' %}",
-          type: "POST",
-          data: {
-            'timestamp': rawTimestamp,
-            'csrfmiddlewaretoken': '{{ csrf_token }}'
-          },
-          success: function(response) {
-  if (response.success) {
-    var safeTimestamp = rawTimestamp.replace(/[:.]/g, '');
-    $('#emission-' + safeTimestamp).fadeOut(500, function() {
-      $(this).remove();
-      // Reload current page with filters preserved
-      setTimeout(function() {
-        window.location.href = window.location.href;
-      }, 500);
-    });
-  } else {
-    alert("Error: " + response.error);
-  }
-},
-          error: function(xhr, status, error) {
-            alert("Deletion failed: " + error);
-          }
+            url: "{% url 'delete_emission' %}",
+            type: "POST",
+            data: {
+                'timestamp': rawTimestamp,
+                'csrfmiddlewaretoken': '{{ csrf_token }}'
+            },
+            success: function(response) {
+                if (response.success) {
+                    var safeTimestamp = rawTimestamp.replace(/[:.]/g, '');
+                    $('#emission-' + safeTimestamp).fadeOut(500, function() {
+                        $(this).remove();
+                        // After deletion, refresh the page to update total emissions and charts
+                        setTimeout(function() {
+                            location.reload();
+                        }, 500);
+                    });
+                } else {
+                    alert("Error: " + response.error);
+                }
+            },
+            error: function(xhr, status, error) {
+                alert("Deletion failed: " + error);
+            }
         });
-      }
-    });
+    }
+});
   });
 </script>
 {% endblock content %}
