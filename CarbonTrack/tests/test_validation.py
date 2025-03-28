@@ -1,28 +1,35 @@
-import pytest
-from carbon_footprint_cal.validation import Validation
+import unittest
+from decimal import Decimal
+from carbon_footprint_cal.data_validation.validation import Validation
 
-@pytest.fixture
-def validator():
-    return Validation()
+class TestValidation(unittest.TestCase):
+    def setUp(self):
+        self.validator = Validation()
 
-def test_validate_electricity_params_success(validator):
-    assert validator.validate_electricity_params("us-ca", 100, "kwh") is True
+    def test_validate_electricity_params_valid(self):
+        self.assertTrue(self.validator.validate_electricity_params("IE", 100, "kwh"))
 
-def test_validate_electricity_params_invalid_location(validator):
-    with pytest.raises(ValueError):
-        validator.validate_electricity_params("invalid", 100, "kwh")
+    def test_validate_electricity_invalid_location(self):
+        with self.assertRaises(ValueError):
+            self.validator.validate_electricity_params("XX", 100, "kwh")
 
-def test_validate_flight_params_success(validator):
-    legs = [{"departure_airport": "sfo", "destination_airport": "yyz"}]
-    assert validator.validate_flight_params(1, legs) is True
+    def test_validate_electricity_invalid_unit(self):
+        with self.assertRaises(ValueError):
+            self.validator.validate_electricity_params("IE", 100, "litre")
 
-def test_validate_flight_params_invalid_legs(validator):
-    with pytest.raises(ValueError):
-        validator.validate_flight_params(1, "invalid")
+    def test_validate_flight_params_valid(self):
+        legs = [{"departure_airport": "DUB", "destination_airport": "LHR"}]
+        self.assertTrue(self.validator.validate_flight_params(2, legs))
 
-def test_validate_shipping_params_success(validator):
-    assert validator.validate_shipping_params(100, "kg", 1000, "km", "truck") is True
+    def test_validate_flight_invalid_passengers(self):
+        with self.assertRaises(ValueError):
+            self.validator.validate_flight_params(0, [])
 
-def test_validate_shipping_params_invalid_weight_unit(validator):
-    with pytest.raises(ValueError):
-        validator.validate_shipping_params(100, "invalid", 1000, "km", "truck")
+    def test_validate_shipping_params_valid(self):
+        self.assertTrue(self.validator.validate_shipping_params(100, "kg", 300, "km", "truck"))
+
+    def test_validate_fuel_combustion_params_valid(self):
+        self.assertTrue(self.validator.validate_fuel_combustion_params(10))
+
+    def test_validate_vehicle_params_valid(self):
+        self.assertTrue(self.validator.validate_vehicle_params(100, "km", "model123"))

@@ -25,7 +25,7 @@ class Calculations:
             value = Decimal(str(api_data["value"]).strip())
             payload = {
                 "type": "electricity", 
-                "electricity_unit": api_data["unit"],  
+                "electricity_unit": api_data["unit"].lower(),  
                 "electricity_value": str(value),  
                 "country": api_data["location"],  # Country code
             }

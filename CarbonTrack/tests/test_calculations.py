@@ -1,47 +1,66 @@
-import pytest
-import os
+import unittest
+from decimal import Decimal
+from unittest.mock import patch, MagicMock
 from carbon_footprint_cal.emissions.calculations import Calculations
-import requests_mock
 
-API_KEY = "ly0WhDdNgcDOHFmQK4Fw"  # Use a test API key
+class TestCalculations(unittest.TestCase):
+    def setUp(self):
+        self.api_key = "dummy_key"
+        self.calc = Calculations(self.api_key)
 
-@pytest.fixture
-def calculator():
-    return Calculations(API_KEY)
+    @patch("carbon_footprint_cal.emissions.calculations.requests.post")
+    def test_calculate_electricity_emission(self, mock_post):
+        mock_post.return_value.status_code = 200
+        mock_post.return_value.json.return_value = {
+            "data": {"attributes": {"carbon_kg": "20.5"}}
+        }
 
-def test_calculate_electricity_emission_success(calculator):
-    with requests_mock.Mocker() as m:
-        m.post(
-            "https://www.carboninterface.com/api/v1/estimates",
-            json={"data": {"attributes": {"carbon_kg": 10.0}}},
-        )
-        emission = calculator.calculate_electricity_emission(100, "us-ca", "kwh")
-        assert emission == 10.0
+        data = {"value": 100, "unit": "kwh", "location": "IE"}
+        result = self.calc.calculate_electricity_emission(data)
+        self.assertEqual(result, Decimal("20.5"))
 
-def test_calculate_electricity_emission_api_error(calculator):
-    with requests_mock.Mocker() as m:
-        m.post(
-            "https://www.carboninterface.com/api/v1/estimates",
-            status_code=500,
-        )
-        emission = calculator.calculate_electricity_emission(100, "us-ca", "kwh")
-        assert emission is None
+    @patch("carbon_footprint_cal.emissions.calculations.requests.post")
+    def test_calculate_flight_emission(self, mock_post):
+        mock_post.return_value.status_code = 200
+        mock_post.return_value.json.return_value = {
+            "data": {"attributes": {"carbon_kg": "1000.0"}}
+        }
 
-def test_calculate_flight_emission_success(calculator):
-    with requests_mock.Mocker() as m:
-        m.post(
-            "https://www.carboninterface.com/api/v1/estimates",
-            json={"data": {"attributes": {"carbon_kg": 20.0}}},
-        )
-        legs = [{"departure_airport": "sfo", "destination_airport": "yyz"}]
-        emission = calculator.calculate_flight_emission(1, legs)
-        assert emission == 20.0
+        legs = [{"departure_airport": "DUB", "destination_airport": "LHR"}]
+        result = self.calc.calculate_flight_emission(2, legs)
+        self.assertEqual(result, Decimal("1000.0"))
 
-def test_calculate_shipping_emission_success(calculator):
-    with requests_mock.Mocker() as m:
-        m.post(
-            "https://www.carboninterface.com/api/v1/estimates",
-            json={"data": {"attributes": {"carbon_kg": 30.0}}},
-        )
-        emission = calculator.calculate_shipping_emission(100, "kg", 1000, "km", "truck")
-        assert emission == 30.0
+    @patch("carbon_footprint_cal.emissions.calculations.requests.post")
+    def test_calculate_shipping_emission(self, mock_post):
+        mock_post.return_value.status_code = 200
+        mock_post.return_value.json.return_value = {
+            "data": {"attributes": {"carbon_kg": "150.0"}}
+        }
+
+        result = self.calc.calculate_shipping_emission(100, "kg", 300, "km", "truck")
+        self.assertEqual(result, Decimal("150.0"))
+
+    @patch("carbon_footprint_cal.emissions.calculations.Calculations.get_api_name_by_fuel_type")
+    @patch("carbon_footprint_cal.emissions.calculations.requests.post")
+    def test_calculate_fuel_combustion_emission(self, mock_post, mock_get_name):
+        mock_get_name.return_value = "home_heating_oil"
+        mock_post.return_value.status_code = 200
+        mock_post.return_value.json.return_value = {
+            "data": {"attributes": {"carbon_kg": "80.0"}}
+        }
+
+        result = self.calc.calculate_fuel_combustion_emission("Heating Oil", "gallon", 50)
+        self.assertEqual(result, Decimal("80.0"))
+
+    @patch("carbon_footprint_cal.emissions.calculations.requests.post")
+    def test_calculate_vehicle_emission(self, mock_post):
+        mock_post.return_value.status_code = 200
+        mock_post.return_value.json.return_value = {
+            "data": {"attributes": {"carbon_kg": "12.2"}}
+        }
+
+        result = self.calc.calculate_vehicle_emission(100, "km", "model123")
+        self.assertEqual(result, Decimal("12.2"))
+
+if __name__ == '__main__':
+    unittest.main()
