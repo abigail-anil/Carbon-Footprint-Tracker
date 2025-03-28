@@ -404,7 +404,8 @@ def delete_emission(request):
         # Initialize DynamoDB resource and the CarbonFootprint table
         dynamodb = boto3.resource('dynamodb')
         table = dynamodb.Table('CarbonFootprint')
-        
+        logger.info(f"Deleting emission for user {request.user.username} at timestamp {timestamp}")
+
         # Delete the emission record using the logged-in user's username and the timestamp as the key.
         table.delete_item(
             Key={
@@ -413,6 +414,9 @@ def delete_emission(request):
             }
         )
         return JsonResponse({'success': True})
+        response = table.delete_item(...)
+        print(f"Delete response: {response}")
+
     except Exception as e:
         logger.error(f"Error deleting emission with timestamp {timestamp}: {e}")
         return JsonResponse({'error': 'Deletion failed.'}, status=500)

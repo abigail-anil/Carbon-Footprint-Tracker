@@ -96,10 +96,13 @@
                     </td>
                     <td>{{ emission.carbonKg }}</td>
                     <td>
-                        <button class="delete-button" data-timestamp="{{ emission.timestamp_str }}">
-                            Delete
-                        </button>
-                    </td>
+  <button class="delete-button"
+          data-timestamp="{{ emission.timestamp_str }}"
+          data-row-id="emission-{{ emission.timestamp_str|cut:':'|cut:'.' }}"
+          style="cursor: pointer; background-color: #e74c3c; color: white; border: none; padding: 5px 10px; border-radius: 5px;">
+    Delete
+  </button>
+</td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -145,57 +148,54 @@
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
 <script>
-  $(document).ready(function() {
-    // Initialize DataTable with simple_numbers pagination type
-    $('#emissionTable').DataTable({
-  "paging": true,
-  "pagingType": "simple_numbers",
-  "searching": true,
-  "info": true,
-  "order": [[0, 'asc']],
-  "drawCallback": function(settings) {
-    // Iterate over all pagination buttons each time the table is drawn
-    $('.dataTables_paginate .paginate_button').each(function(){
-      // Remove any existing non-breaking spaces (in case they were already added)
-      $(this).nextUntil('.paginate_button').remove();
-      // Append a non-breaking space after each pagination button
-      $(this).after(document.createTextNode("\u00A0"));
-    });
-  }
-});
-    
-    let end_date_width = $('#end_date_input').outerWidth();
-    $('#filter_button').css('width', end_date_width + 'px');
-
-    // Inline delete functionality using AJAX
-    $('.delete-button').on('click', function() {
-    if (confirm("Are you sure you want to delete this emission record?")) {
-        var button = $(this);
-        var rawTimestamp = button.data('timestamp');
-        $.ajax({
-            url: "{% url 'delete_emission' %}",
-            type: "POST",
-            data: {
-                'timestamp': rawTimestamp,
-                'csrfmiddlewaretoken': '{{ csrf_token }}'
-            },
-            success: function(response) {
-    if (response.success) {
-        var safeTimestamp = rawTimestamp.replace(/[:.]/g, '');
-        $('#emission-' + safeTimestamp).fadeOut(300, function() {
-            // Immediately reload after deletion without delay
-            window.location.href = window.location.href;
-        });
-    } else {
-        alert("Error: " + response.error);
+$(document).ready(function() {
+  $('#emissionTable').DataTable({
+    paging: true,
+    pagingType: "simple_numbers",
+    searching: true,
+    info: true,
+    order: [[0, 'asc']],
+    drawCallback: function(settings) {
+      $('.dataTables_paginate .paginate_button').each(function(){
+        $(this).nextUntil('.paginate_button').remove();
+        $(this).after(document.createTextNode("\u00A0"));
+      });
     }
-},
-            error: function(xhr, status, error) {
-                alert("Deletion failed: " + error);
-            }
-        });
-    }
-});
   });
+
+  let end_date_width = $('#end_date_input').outerWidth();
+  $('#filter_button').css('width', end_date_width + 'px');
+
+  // Delete AJAX handler
+  $(document).on('click', '.delete-button', function() {
+    if (confirm("Are you sure you want to delete this emission record?")) {
+      var button = $(this);
+      var rawTimestamp = button.data('timestamp');
+
+      $.ajax({
+        url: "{% url 'delete_emission' %}",
+        type: "POST",
+        data: {
+          'timestamp': rawTimestamp,
+          'csrfmiddlewaretoken': '{{ csrf_token }}'
+        },
+        success: function(response) {
+          if (response.success) {
+            var safeTimestamp = rawTimestamp.replace(/[:.]/g, '');
+            $('#emission-' + safeTimestamp).fadeOut(300, function() {
+              location.reload();  // Reload to update total emissions and charts
+            });
+          } else {
+            alert("Error: " + response.error);
+          }
+        },
+        error: function(xhr, status, error) {
+          alert("Deletion failed: " + error);
+        }
+      });
+    }
+  });
+});
 </script>
+
 {% endblock content %}
