@@ -180,19 +180,16 @@
                 'csrfmiddlewaretoken': '{{ csrf_token }}'
             },
             success: function(response) {
-                if (response.success) {
-                    var safeTimestamp = rawTimestamp.replace(/[:.]/g, '');
-                    $('#emission-' + safeTimestamp).fadeOut(500, function() {
-                        $(this).remove();
-                        // After deletion, refresh the page to update total emissions and charts
-                        setTimeout(function() {
-                            location.reload();
-                        }, 500);
-                    });
-                } else {
-                    alert("Error: " + response.error);
-                }
-            },
+    if (response.success) {
+        var safeTimestamp = rawTimestamp.replace(/[:.]/g, '');
+        $('#emission-' + safeTimestamp).fadeOut(300, function() {
+            // Immediately reload after deletion without delay
+            window.location.href = window.location.href;
+        });
+    } else {
+        alert("Error: " + response.error);
+    }
+},
             error: function(xhr, status, error) {
                 alert("Deletion failed: " + error);
             }
