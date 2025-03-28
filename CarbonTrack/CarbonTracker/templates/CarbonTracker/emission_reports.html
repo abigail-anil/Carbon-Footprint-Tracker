@@ -180,18 +180,19 @@
             'csrfmiddlewaretoken': '{{ csrf_token }}'
           },
           success: function(response) {
-            if (response.success) {
-              var safeTimestamp = rawTimestamp.replace(/[:.]/g, '');
-              $('#emission-' + safeTimestamp).fadeOut(500, function() {
-                $(this).remove();
-                setTimeout(function() {
-                  location.reload();
-                }, 500);
-              });
-            } else {
-              alert("Error: " + response.error);
-            }
-          },
+  if (response.success) {
+    var safeTimestamp = rawTimestamp.replace(/[:.]/g, '');
+    $('#emission-' + safeTimestamp).fadeOut(500, function() {
+      $(this).remove();
+      // Reload current page with filters preserved
+      setTimeout(function() {
+        window.location.href = window.location.href;
+      }, 500);
+    });
+  } else {
+    alert("Error: " + response.error);
+  }
+},
           error: function(xhr, status, error) {
             alert("Deletion failed: " + error);
           }
