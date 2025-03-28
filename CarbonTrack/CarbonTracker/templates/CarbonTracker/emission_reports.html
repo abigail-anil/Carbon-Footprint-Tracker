@@ -1,4 +1,29 @@
 {% extends "CarbonTracker/base_generic.html" %}
+{% block extra_head %}
+  <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.min.css">
+  <style>
+    /* Center the pagination container */
+    .dataTables_wrapper .dataTables_paginate {
+  text-align: center;
+  margin-top: 1em;
+}
+.dataTables_wrapper .dataTables_paginate .paginate_button {
+  display: inline-block !important;
+  padding: 6px 12px !important;
+  margin: 0 5px !important;
+  border: 1px solid #ddd !important;
+  border-radius: 3px !important;
+  background-color: #fff !important;
+  color: #333 !important;
+  cursor: pointer !important;
+}
+.dataTables_wrapper .dataTables_paginate .paginate_button:hover {
+  background-color: #e9e9e9 !important;
+}
+
+  </style>
+{% endblock extra_head %}
+
 
 {% block content %}
 <div style="display: flex; min-height: 100vh;">
@@ -38,18 +63,19 @@
         </div>
 
         {% if emissions %}
-        <table border="1" style="width: 100%; margin-top: 20px;">
+        <table border="1" style="width: 100%; margin-top: 20px;" id="emissionTable">
             <thead>
                 <tr>
                     <th>Date</th>
                     <th>Activity Type</th>
                     <th>Input Parameters</th>
                     <th>Emission (kg CO2e)</th>
+                    <th>Actions</th>
                 </tr>
             </thead>
             <tbody>
                 {% for emission in emissions %}
-                <tr>
+                <tr id="emission-{{ emission.timestamp_str|cut:":"|cut:"." }}">
                     <td>{{ emission.timestamp|date:"Y-m-d H:i:s" }}</td>
                     <td>{{ emission.activity_type }}</td>
                     <td>
@@ -69,6 +95,11 @@
                         {% endif %}
                     </td>
                     <td>{{ emission.carbonKg }}</td>
+                    <td>
+                        <button class="delete-button" data-timestamp="{{ emission.timestamp_str }}">
+                            Delete
+                        </button>
+                    </td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -113,19 +144,60 @@
 
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
-
 <script>
-    $(document).ready(function() {
-        $('#emissionTable').DataTable({
-            "paging": true,
-            "searching": true,
-            "info": true,
-            "order": [[0, 'asc']]
-        });
-        
-        let end_date_width = $('#end_date_input').outerWidth();
-        $('#filter_button').css('width', end_date_width + 'px');
+  $(document).ready(function() {
+    // Initialize DataTable with simple_numbers pagination type
+    $('#emissionTable').DataTable({
+  "paging": true,
+  "pagingType": "simple_numbers",
+  "searching": true,
+  "info": true,
+  "order": [[0, 'asc']],
+  "drawCallback": function(settings) {
+    // Iterate over all pagination buttons each time the table is drawn
+    $('.dataTables_paginate .paginate_button').each(function(){
+      // Remove any existing non-breaking spaces (in case they were already added)
+      $(this).nextUntil('.paginate_button').remove();
+      // Append a non-breaking space after each pagination button
+      $(this).after(document.createTextNode("\u00A0"));
     });
-</script>
+  }
+});
+    
+    let end_date_width = $('#end_date_input').outerWidth();
+    $('#filter_button').css('width', end_date_width + 'px');
 
+    // Inline delete functionality using AJAX
+    $('.delete-button').on('click', function() {
+      if (confirm("Are you sure you want to delete this emission record?")) {
+        var button = $(this);
+        var rawTimestamp = button.data('timestamp');
+        $.ajax({
+          url: "{% url 'delete_emission' %}",
+          type: "POST",
+          data: {
+            'timestamp': rawTimestamp,
+            'csrfmiddlewaretoken': '{{ csrf_token }}'
+          },
+          success: function(response) {
+            if (response.success) {
+              var safeTimestamp = rawTimestamp.replace(/[:.]/g, '');
+              $('#emission-' + safeTimestamp).fadeOut(500, function() {
+                $(this).remove();
+                setTimeout(function() {
+                  location.reload();
+                }, 500);
+              });
+            } else {
+              alert("Error: " + response.error);
+            }
+          },
+          error: function(xhr, status, error) {
+            alert("Deletion failed: " + error);
+          }
+        });
+      }
+    });
+  });
+</script>
 {% endblock content %}

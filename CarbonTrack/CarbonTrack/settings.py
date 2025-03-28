@@ -158,3 +158,5 @@ AWS_REGION = os.getenv('AWS_REGION', 'us-east-1')
 
 # Set the region for boto3 to use (AWS SDK)
 boto3.setup_default_session(region_name=AWS_REGION)
+
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'

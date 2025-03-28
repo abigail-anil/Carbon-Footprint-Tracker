@@ -9,6 +9,7 @@ from .utils import get_supported_countries, subscribe_email_to_sns_topic, upload
 from django.conf import settings
 from django.http import HttpResponse, JsonResponse
 from django.conf import settings as django_settings
+from django.views.decorators.http import require_POST
 import numpy as np #import numpy
 import os
 import boto3
@@ -388,9 +389,35 @@ def generate_presigned_url(bucket_name, object_name, expiration=3600):
         return None
     return response
 
+# Initialize DynamoDB resource and the CarbonFootprint table
 dynamodb = boto3.resource('dynamodb')
 table = dynamodb.Table('CarbonFootprint')
 
+@login_required
+@require_POST
+def delete_emission(request):
+    timestamp = request.POST.get('timestamp')
+    if not timestamp:
+        return JsonResponse({'error': 'Invalid emission timestamp.'}, status=400)
+
+    try:
+        # Initialize DynamoDB resource and the CarbonFootprint table
+        dynamodb = boto3.resource('dynamodb')
+        table = dynamodb.Table('CarbonFootprint')
+        
+        # Delete the emission record using the logged-in user's username and the timestamp as the key.
+        table.delete_item(
+            Key={
+                'userId': request.user.username,
+                'timestamp': timestamp
+            }
+        )
+        return JsonResponse({'success': True})
+    except Exception as e:
+        logger.error(f"Error deleting emission with timestamp {timestamp}: {e}")
+        return JsonResponse({'error': 'Deletion failed.'}, status=500)
+        
+        
 @login_required
 def emission_reports(request):
     start_date = request.GET.get('start_date', '')  # Default to empty string
@@ -453,6 +480,7 @@ def emission_reports(request):
         for item in emissions_data:
             emission = {
                 'timestamp': item.get('timestamp', 'N/A'),
+                'timestamp_str': item['timestamp'],
                 'activityType': item.get('activityType', 'N/A'),
                 'carbonKg': item.get('carbonKg', 'N/A'),
                 'inputParams': item.get('inputParams', None)
@@ -471,6 +499,7 @@ def emission_reports(request):
         for item in filtered_emissions:
             emission = {
                 'timestamp': datetime.fromisoformat(item['timestamp']),
+                'timestamp_str': item['timestamp'],
                 'activity_type': item['activityType'],
                 #'carbonKg': float(item['carbonKg']),
                 'carbonKg': round(float(item['carbonKg']), 2),
@@ -632,6 +661,7 @@ def export_csv(request):
         for item in filtered_emissions:
             emission = {
                 'timestamp': datetime.fromisoformat(item['timestamp']),
+                'timestamp_str': item['timestamp'],
                 'activity_type': item['activityType'],
                 'carbonKg': round(float(item['carbonKg']), 2),
                 'input_params': {},

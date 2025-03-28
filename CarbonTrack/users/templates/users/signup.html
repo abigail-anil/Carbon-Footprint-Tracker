@@ -1,18 +1,49 @@
 {% extends "CarbonTracker/base_generic.html" %}
 
 {% block content %}
-<div style="text-align: center; font-size: 1.2em; padding: 20px;">
-    <h2 style="font-size: 1.5em;">🌍 Join the Green Revolution!</h2>
-    <p>Track your carbon footprint and contribute to a sustainable future.</p>
-
-    <form method="POST" style="display: inline-block; text-align: left;">
-        {% csrf_token %}
-        {{ form.as_p }}
-        <div style="text-align: center;">
-            <button type="submit" style="font-size: 1.2em; background-color: #4CAF50; color: white; padding: 10px 20px; border: none; cursor: pointer;">Sign Up</button>
+<!-- Outer container to center content vertically and horizontally -->
+<div style="display: flex; align-items: center; justify-content: center; min-height: 80vh; padding: 20px;">
+  <!-- Form container with fixed max width, light background, and box shadow for visual appeal -->
+  <div style="max-width: 500px; width: 100%; background: #f9f9f9; padding: 30px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+    <!-- Title and subheading -->
+    <h2 style="font-size: 1.8em; margin-bottom: 20px; text-align: center;">🌍 Join the Green Revolution!</h2>
+    <p style="text-align: center; margin-bottom: 20px;">
+      Track your carbon footprint and contribute to a sustainable future.
+    </p>
+    <!-- Start of the sign-up form -->
+    <form method="POST">
+      {% csrf_token %}
+      <!-- Container for form fields using flex column layout -->
+      <div style="display: flex; flex-direction: column;">
+        {% for field in form %}
+          <!-- Each field is rendered as a row with label and input aligned horizontally -->
+          <div style="display: flex; align-items: center; margin-bottom: 15px;">
+            <!-- Label container with fixed width and right-aligned text -->
+            <div style="width: 150px; text-align: right; padding-right: 10px; font-weight: bold;">
+              {{ field.label_tag }}
+            </div>
+            <!-- Input container that takes remaining space -->
+            <div style="flex: 1;">
+              {{ field }}
+              {# If there are errors, they will appear here #}
+              {% if field.errors %}
+                <div style="color: red; font-size: 0.9em;">{{ field.errors }}</div>
+              {% endif %}
+            </div>
+          </div>
+        {% endfor %}
+        <!-- Submit button centered below the form fields -->
+        <div style="text-align: center; margin-top: 20px;">
+          <button type="submit" style="font-size: 1.2em; background-color: #4CAF50; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer;">
+            Sign Up
+          </button>
         </div>
+      </div>
     </form>
-
-    <p>Already have an account? <a href="{% url 'sign_in' %}" style="font-size: 1.2em;">Sign In</a></p>
+    <!-- Sign-in link centered below the form -->
+    <p style="text-align: center; margin-top: 20px;">
+      Already have an account? <a href="{% url 'sign_in' %}" style="font-size: 1.2em; color: #4CAF50;">Sign In</a>
+    </p>
+  </div>
 </div>
 {% endblock content %}

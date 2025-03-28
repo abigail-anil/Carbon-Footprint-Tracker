@@ -1,5 +1,12 @@
 {% extends "CarbonTracker/base_generic.html" %}
-
+{% block extra_head %}
+  <style>
+    /* Set a subtle background gradient for the whole page */
+    body {
+      background: linear-gradient(135deg, #f0f0f0, #ffffff);
+    }
+  </style>
+{% endblock extra_head %}
 {% block content %}
 <div style="text-align: center; font-size: 1.2em; padding: 20px;">
     <h2 style="font-size: 1.5em;">🌱 Welcome to Carbon Footprint Tracker!</h2>
@@ -13,6 +20,11 @@
         </div>
     </form>
 
-    <p>Don't have an account? <a href="{% url 'users:sign_up' %}" style="font-size: 1.2em;">Sign Up</a></p>
+    <p>
+      Don't have an account? <a href="{% url 'users:sign_up' %}" style="font-size: 1.2em;">Sign Up</a>
+    </p>
+    <p>
+      <a href="{% url 'password_reset' %}" style="font-size: 1.2em;">Forgot Password?</a>
+    </p>
 </div>
 {% endblock content %}
