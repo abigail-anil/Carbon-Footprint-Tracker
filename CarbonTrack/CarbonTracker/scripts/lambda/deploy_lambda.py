@@ -5,8 +5,8 @@ lambda_client = boto3.client('lambda')
 sns_client = boto3.client('sns')
 events_client = boto3.client('events')
 
-rule_name = 'carbon-emissions-daily-schedule' # change rule name
-schedule_expression = 'cron(40 21 * * ? *)'  # Daily at midnight UTC
+rule_name = 'carbon-emissions-monthly-schedule' # change rule name
+schedule_expression = 'cron(0 0 1 * ? *)'  # Monthly at 00:00 UTC on the 1st
 function_name = 'lambda-carbon-emissions'
 topic_arn = 'arn:aws:sns:us-east-1:754789402555:carbon_emissions_alerts'
 
@@ -69,7 +69,7 @@ rule_response = events_client.put_rule(
     Name=rule_name,
     ScheduleExpression=schedule_expression,
     State='ENABLED',
-    Description='Triggers lambda-carbon-emissions daily at midnight UTC.' # changed description
+    Description='Triggers lambda-carbon-emissions daily at midnight UTC.'
 )
 
 print(f"CloudWatch Events rule created: {rule_response}")
