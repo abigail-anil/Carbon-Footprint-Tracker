@@ -25,7 +25,9 @@ import boto3
 
 logger = logging.getLogger(__name__)
 
+# ---------------- Secret Manager ---------------- #
 def get_secret():
+    """Fetch API key from AWS Secrets Manager"""
     secret_name = "CARBON_INTERFACE_API_KEY" 
     region_name = "us-east-1"
 
@@ -52,6 +54,7 @@ def get_secret():
         logger.error(f"An error occurred: {e}")
         return None
 
+    # Return the decoded secret
     if 'SecretString' in get_secret_value_response:
         secret = get_secret_value_response['SecretString']
         return json.loads(secret)
@@ -59,6 +62,7 @@ def get_secret():
         # Handle binary secrets if needed.
         return json.loads(base64.b64decode(get_secret_value_response['SecretBinary']))
 
+# ---------------- API & Object Initialization ---------------- #
 secrets = get_secret()
 
 if secrets:
@@ -78,12 +82,15 @@ else:
 data_storage = DataStorage(table_name="CarbonFootprint")
 validation = Validation()
 
+
+# DynamoDB resource to fetch vehicle models
 dynamodb = boto3.resource('dynamodb')
 table = dynamodb.Table('VehicleModels')
 
+# ------------------- Main View: Calculate Emission ------------------- #
 @login_required
 def calculate_emission(request):
-    activity_form = ActivityTypeForm(request.GET or None)
+    activity_form = ActivityTypeForm(request.GET or None) # Activity type selector
     form = None
     result = None
     error = None
@@ -98,11 +105,13 @@ def calculate_emission(request):
     # Fetch supported countries from DynamoDB
     supported_countries = get_supported_countries()
 
+    # ---------------- Handle POST request (form submission) ---------------- #
     if request.method == 'POST':
         activity_form = ActivityTypeForm(request.POST)
         if activity_form.is_valid():
             activity_type = activity_form.cleaned_data['activity_type']
 
+            # Build the correct form based on selected activity type
             if activity_type == 'electricity':
                 form = ElectricityForm(request.POST)
                 form.fields['location'].choices = list(supported_countries.items())
@@ -118,6 +127,7 @@ def calculate_emission(request):
                 fuel_source_types = list(set([item['fuel_source_type'] for item in fuel_sources]))
                 form.fields['fuel_source_type'].choices = [(source, source) for source in fuel_source_types]
 
+                # Populate units based on selected fuel type
                 if request.POST.get('fuel_source_type'):
                     selected_source_type = request.POST.get('fuel_source_type')
                     
@@ -131,14 +141,16 @@ def calculate_emission(request):
                 if makes:
                     form.fields['vehicle_make'].choices = [(make, make) for make in makes]
 
+                # Populate model dropdown based on selected make
                 if request.POST.get('vehicle_make'):
                     vehicle_make = request.POST.get('vehicle_make')
                     models = calculator.get_vehicle_models_from_dynamodb(vehicle_make)
                     form.fields['vehicle_model'].choices = [(model['id'], model['name']) for model in models]
 
-            
+            # ---------------- Validate and Calculate Emissions ---------------- #
             if form and form.is_valid():
                 try:
+                    # ELECTRICITY
                     if activity_type == 'electricity':
                         country_code = form.cleaned_data['location']
                         value = form.cleaned_data['value']
@@ -148,6 +160,7 @@ def calculate_emission(request):
                         emission = calculator.calculate_electricity_emission(api_data)
                         input_params = {"location": country_code, "value": str(value), "unit": unit}
 
+                    # FLIGHT
                     elif activity_type == 'flight':
                         passengers = form.cleaned_data['passengers']
                         legs = [{"departure_airport": form.cleaned_data['departure_airport'],
@@ -156,6 +169,7 @@ def calculate_emission(request):
                         emission = calculator.calculate_flight_emission(passengers, legs)
                         input_params = {"passengers": passengers, "legs": legs}
 
+                    # SHIPPING
                     elif activity_type == 'shipping':
                         weight_value = form.cleaned_data['weight_value']
                         weight_unit = form.cleaned_data['weight_unit']
@@ -170,6 +184,7 @@ def calculate_emission(request):
                                         "distance_value": str(distance_value), "distance_unit": distance_unit,
                                         "transport_method": transport_method}
                                         
+                    # FUEL COMBUSTION
                     elif activity_type == 'fuel_combustion':
                         fuel_source_type = form.cleaned_data['fuel_source_type']
                         fuel_source_unit = form.cleaned_data['fuel_source_unit']
@@ -184,6 +199,7 @@ def calculate_emission(request):
                                 "fuel_source_value": str(fuel_source_value)
                             }
                     
+                    # VEHICLE
                     elif activity_type == 'vehicle':
                         distance_value = form.cleaned_data['distance_value']
                         distance_unit = form.cleaned_data['distance_unit']
@@ -215,7 +231,8 @@ def calculate_emission(request):
 
                     else:
                         emission = None
-
+                    
+                    # Store result
                     if emission is not None:
                         data_storage.store_emission_data(request.user.username, activity_type, input_params, emission)
                         result = f"Emission: {emission:.2f} kg CO2e"
@@ -227,6 +244,7 @@ def calculate_emission(request):
                     error = "API key retrieval or calculation failed. Please check logs."
                     logger.error(f"Attribute error during calculation: {e}")
 
+    # ---------------- Handle GET request (form rendering) ---------------- #
     elif request.method == 'GET' and 'activity_type' in request.GET:
         activity_type = request.GET['activity_type']
 
@@ -268,7 +286,7 @@ def calculate_emission(request):
                 else:
                     form.fields['vehicle_model'].choices = [('', '---------')] #set model choices to default if no make is selected.
 			
-
+    # ---------------- Render Template ---------------- #
     return render(request, 'CarbonTracker/calculate.html', {
         'activity_form': activity_form,
         'form': form,
@@ -281,14 +299,17 @@ dynamodb = boto3.resource('dynamodb')
 table = dynamodb.Table('CarbonFootprint')
 
 def generate_chart(emissions, chart_type="line"):
+    """Generates a base64-encoded image for line, bar, or pie chart based on emissions data."""
     plt.figure(figsize=(12, 6))
 
+    # Exit if there is no data
     if not emissions:
         print(f"No emissions data available for {chart_type} chart")
         return None
 
+     # -------- Line Chart --------
     if chart_type == "line":
-        emissions.sort(key=lambda x: x["timestamp"])
+        emissions.sort(key=lambda x: x["timestamp"])  # Sort by date
         timestamps = [e["timestamp"] for e in emissions]
         emissions_values = [e["carbonKg"] for e in emissions]
 
@@ -298,6 +319,7 @@ def generate_chart(emissions, chart_type="line"):
         plt.xticks(rotation=45)
         plt.grid(True)
 
+    # -------- Bar Chart --------
     elif chart_type == "bar":
         activity_types = [e["activity_type"] for e in emissions]
         emissions_values = [e["carbonKg"] for e in emissions]
@@ -306,6 +328,7 @@ def generate_chart(emissions, chart_type="line"):
         plt.xlabel("Activity Type")
         plt.ylabel("Emissions (kg CO2e)")
 
+    # -------- Pie Chart --------
     elif chart_type == "pie":
         activity_totals = {}
         for e in emissions:
@@ -330,7 +353,7 @@ def generate_chart(emissions, chart_type="line"):
     else:
         return None
 
-    # Save and return the chart for all chart types
+    # Convert plot to base64 image string
     buf = BytesIO()
     plt.savefig(buf, format="png", bbox_inches='tight')
     buf.seek(0)
@@ -341,6 +364,9 @@ def generate_chart(emissions, chart_type="line"):
     return chart_image
     
 def filter_and_sort_emissions(emissions, start_date, end_date, activity_type, sort_by, sort_order):
+    """Filters emissions based on date range and activity type, then sorts by timestamp."""
+    
+    # Convert start/end date strings to datetime objects
     if start_date:
         start_date = datetime.strptime(start_date, "%Y-%m-%d").date()
     if end_date:
@@ -353,6 +379,7 @@ def filter_and_sort_emissions(emissions, start_date, end_date, activity_type, so
 
         print(f"Timestamp: {timestamp_dt}, Start: {start_date}, End: {end_date}")
 
+        # Filter by date range
         if start_date and timestamp_dt < start_date:
             continue
         #modified line to be less than or equal to.
@@ -361,9 +388,11 @@ def filter_and_sort_emissions(emissions, start_date, end_date, activity_type, so
 
         print(f"Activity: {emission['activityType']}, Filter: {activity_type}")
 
+        # Filter by activity type
         if activity_type and emission["activityType"] != activity_type:
             continue
 
+        # Convert carbonKg to float if Decimal
         emission["carbonKg"] = float(emission["carbonKg"]) if isinstance(emission["carbonKg"], Decimal) else emission["carbonKg"]
         filtered_emissions.append(emission)
 
@@ -396,6 +425,7 @@ table = dynamodb.Table('CarbonFootprint')
 @login_required
 @require_POST
 def delete_emission(request):
+    """Deletes a specific emission entry from DynamoDB using user ID and timestamp."""
     timestamp = request.POST.get('timestamp')
     if not timestamp:
         return JsonResponse({'error': 'Invalid emission timestamp.'}, status=400)
@@ -421,9 +451,12 @@ def delete_emission(request):
         logger.error(f"Error deleting emission with timestamp {timestamp}: {e}")
         return JsonResponse({'error': 'Deletion failed.'}, status=500)
         
-        
+
 @login_required
 def emission_reports(request):
+    """Displays a filtered and sorted list of user emissions with charts and totals."""
+    
+    # Extract query params
     start_date = request.GET.get('start_date', '')  # Default to empty string
     end_date = request.GET.get('end_date', '')    # Default to empty string
     activity_type = request.GET.get('activity_type', '')
@@ -440,8 +473,8 @@ def emission_reports(request):
     s3_bar_url = None
     s3_pie_url = None
 
-    if start_date and end_date: # MODIFIED: Check if both start_date and end_date are provided
-        # User has selected dates, proceed with filtering
+    if start_date and end_date: # Check if both start_date and end_date are provided
+        # Prepare filter expression for DynamoDB
         filter_expression = 'userId = :user_id'
         expression_attribute_values = {':user_id': request.user.username}
         expression_attribute_names = None
@@ -469,6 +502,7 @@ def emission_reports(request):
         except ValueError:
             pass
 
+        # Scan the DynamoDB table
         scan_params = {
             "FilterExpression": filter_expression,
             "ExpressionAttributeValues": expression_attribute_values,
@@ -480,6 +514,7 @@ def emission_reports(request):
         response = table.scan(**scan_params)
         emissions_data = response.get('Items', [])
 
+        # Normalize and parse emissions
         emissions = []
         for item in emissions_data:
             emission = {
@@ -490,6 +525,7 @@ def emission_reports(request):
                 'inputParams': item.get('inputParams', None)
             }
 
+            # Parse stringified JSON inputParams
             if isinstance(emission['inputParams'], str):
                 try:
                     emission['inputParams'] = json.loads(emission['inputParams'])
@@ -498,8 +534,10 @@ def emission_reports(request):
 
             emissions.append(emission)
 
+        # Filter and sort emissions
         filtered_emissions = filter_and_sort_emissions(emissions, start_date, end_date, activity_type, sort_by, sort_order)
 
+        # Build the display structure
         for item in filtered_emissions:
             emission = {
                 'timestamp': datetime.fromisoformat(item['timestamp']),
@@ -510,6 +548,7 @@ def emission_reports(request):
                 'input_params': {},
             }
 
+            # Format inputs based on activity type
             input_params = item.get('inputParams', {})
 
             if item['activityType'] == 'electricity':
@@ -550,11 +589,13 @@ def emission_reports(request):
             emissions_display.append(emission)
 
         #total_emissions = sum(item['carbonKg'] for item in emissions_display)
+        # Calculate total emissions
         total_emissions = round(sum(item['carbonKg'] for item in emissions_display), 2)
         chart_image_line = generate_chart(emissions_display, "line")
         chart_image_bar = generate_chart(emissions_display, "bar")
         chart_image_pie = generate_chart(emissions_display, "pie")
         
+        # Generate and upload charts
         if chart_image_line:
             object_key = f"{request.user.username}/emissions_line.png"
             s3_line_url = generate_presigned_url(settings.S3_BUCKET_NAME, object_key)
@@ -573,8 +614,8 @@ def emission_reports(request):
             s3_pie_url = generate_presigned_url(settings.S3_BUCKET_NAME, object_key)
             upload_chart_to_s3(request.user.username, chart_image_pie, "emissions_pie") #uploading pie chart
 
-    # If no dates are selected, emissions_display will be empty, total_emissions will be 0, and chart_image will be None (MODIFIED: No else block, allowing default values to remain)
-
+    
+    # Render emission reports template
     return render(request, 'CarbonTracker/emission_reports.html', {
         'emissions': emissions_display,
         'total_emissions': total_emissions,
@@ -595,6 +636,9 @@ def emission_reports(request):
     
 @login_required
 def export_csv(request):
+    """Exports filtered emissions data to a downloadable CSV file."""
+    
+    # Extract query parameters
     start_date = request.GET.get('start_date', '')
     end_date = request.GET.get('end_date', '')
     activity_type = request.GET.get('activity_type', '')
@@ -604,27 +648,35 @@ def export_csv(request):
     emissions_display = []
     total_emissions = 0
 
+    # Only proceed if both start and end dates are provided
     if start_date and end_date:
+        # Initialize filter expressions for DynamoDB scan
         filter_expression = 'userId = :user_id'
         expression_attribute_values = {':user_id': request.user.username}
         expression_attribute_names = None
 
         try:
+            # Convert date strings to datetime objects
             start_datetime = datetime.fromisoformat(start_date) if start_date else None
             end_datetime = datetime.fromisoformat(end_date) if end_date else None
 
+            # Adjust end_datetime to include the full day
             if end_datetime:
                 end_datetime = end_datetime.replace(hour=23, minute=59, second=59)
 
+            # Format dates as ISO strings
             start_iso = start_datetime.isoformat()
             end_iso = end_datetime.isoformat()
+            
+            # Add timestamp range to filter expression
             filter_expression += ' AND #ts BETWEEN :start_ts AND :end_ts'
             expression_attribute_values[':start_ts'] = start_iso
             expression_attribute_values[':end_ts'] = end_iso
             expression_attribute_names = {'#ts': 'timestamp'}
         except ValueError:
-            pass
+            pass # Handle bad date format gracefully
 
+        # Prepare scan parameters for DynamoDB
         scan_params = {
             "FilterExpression": filter_expression,
             "ExpressionAttributeValues": expression_attribute_values,
@@ -633,6 +685,7 @@ def export_csv(request):
         if expression_attribute_names:
             scan_params["ExpressionAttributeNames"] = expression_attribute_names
 
+        # Perform scan
         response = table.scan(**scan_params)
         emissions_data = response.get('Items', [])
 
@@ -644,7 +697,8 @@ def export_csv(request):
                 'carbonKg': item.get('carbonKg', 'N/A'),
                 'inputParams': item.get('inputParams', None)
             }
-
+            
+            # Parse inputParams if it's a JSON string
             input_params = emission.get('inputParams', None)
 
             if isinstance(input_params, str):
@@ -660,8 +714,10 @@ def export_csv(request):
 
             emissions.append(emission)
 
+        # Apply filtering and sorting
         filtered_emissions = filter_and_sort_emissions(emissions, start_date, end_date, activity_type, sort_by, sort_order)
 
+        # Format emissions for display/export
         for item in filtered_emissions:
             emission = {
                 'timestamp': datetime.fromisoformat(item['timestamp']),
@@ -673,6 +729,7 @@ def export_csv(request):
 
             input_params = item.get('inputParams', {})
 
+            # Customize parameter format for each activity type
             if item['activityType'] == 'electricity':
                 emission['input_params'] = {
                     'value': input_params.get('value', 'N/A'),
@@ -711,6 +768,7 @@ def export_csv(request):
                 }
             emissions_display.append(emission)
 
+    # If no emissions found, return CSV with "No data" message
     if not emissions_display:
         response = HttpResponse(content_type='text/csv')
         response['Content-Disposition'] = 'attachment; filename="emissions_report.csv"'
@@ -718,11 +776,14 @@ def export_csv(request):
         writer.writerow(['No data found'])
         return response
 
+    # Create CSV response
     response = HttpResponse(content_type='text/csv')
     response['Content-Disposition'] = 'attachment; filename="emissions_report.csv"'
 
     writer = csv.writer(response)
     writer.writerow(['Date', 'Activity Type', 'Input Parameters', 'Emission (kg CO2e)'])
+    
+    # Write each row of emission data
     for emission in emissions_display:
         writer.writerow([
             emission['timestamp'].isoformat(),
@@ -741,9 +802,11 @@ settings_table = dynamodb.Table('user_settings')
 
 @login_required
 def settings_view(request):
-    user_id = request.user.username
+    """Handles user settings display, updates, and subscription management."""
+    user_id = request.user.username # Logged-in user's ID (used as partition key)
 
     try:
+        # Fetch existing settings from DynamoDB or use defaults if not found
         settings_response = settings_table.get_item(Key={'userId': user_id})
         settings_data = settings_response.get('Item', {
             'electricity_threshold': 0,
@@ -755,13 +818,18 @@ def settings_view(request):
             'subscribed': False
         })
 
+        # ---------------- Handle POST Requests ---------------- #
         if request.method == 'POST':
+            
+            # ---------- Subscribe to SNS Topic ---------- 
             if 'subscribe' in request.POST:
                 topic_arn = django_settings.SNS_TOPIC_ARN
                 email = request.user.email
 
                 if topic_arn and email:
-                    subscribe_email_to_sns_topic(topic_arn, email)
+                    subscribe_email_to_sns_topic(topic_arn, email) # Utility function
+                    
+                    # Update 'subscribed' flag in DynamoDB
                     settings_table.update_item(
                         Key={'userId': user_id},
                         UpdateExpression="SET subscribed = :s",
@@ -773,12 +841,14 @@ def settings_view(request):
                     message = 'Subscription failed. SNS topic or email not configured.'
                 return render(request, 'CarbonTracker/settings.html', {'settings': settings_data, 'message': message})
 
+            # ---------- Unsubscribe from SNS Topic ---------- #
             elif 'unsubscribe' in request.POST:
                 topic_arn = django_settings.SNS_TOPIC_ARN
                 email = request.user.email
 
                 if topic_arn and email:
                     unsubscribe_email_from_sns_topic(topic_arn, email)
+                    # Update 'subscribed' flag in DynamoDB
                     settings_table.update_item(
                         Key={'userId': user_id},
                         UpdateExpression="SET subscribed = :s",
@@ -789,13 +859,17 @@ def settings_view(request):
                 else:
                     message = 'Unsubscription failed. SNS topic or email not configured.'
 
+                # Render the form with updated subscription state
                 form = SettingsForm(initial=settings_data)
                 return render(request, 'CarbonTracker/settings.html', {'settings': settings_data, 'message': message, 'form': form})
 
+            # ---------- Save Threshold Settings ---------- #
             else:
                 form = SettingsForm(request.POST)
                 if form.is_valid():
                     cleaned_data = form.cleaned_data
+                    
+                    # Update all threshold values in DynamoDB
                     settings_table.update_item(
                         Key={'userId': user_id},
                         UpdateExpression="set electricity_threshold = :e, flight_threshold = :f, shipping_threshold = :s, emission_check_frequency = :c, fuel_threshold = :fu, vehicle_threshold =:v",
@@ -809,13 +883,17 @@ def settings_view(request):
                         },
                         ReturnValues="UPDATED_NEW"
                     )
+                    
+                    # Update local data for rendering
                     settings_data.update(cleaned_data)
                     message = 'Settings saved successfully.'
                     return render(request, 'CarbonTracker/settings.html', {'form': SettingsForm(initial=settings_data), 'settings': settings_data, 'message': message})
 
                 else:
+                    # Handle form validation errors
                     return render(request, 'CarbonTracker/settings.html', {'form': form, 'settings': settings_data, 'form_errors': form.errors})
 
+        # ---------------- Handle GET Requests (Initial Form Load) ---------------- #
         form = SettingsForm(initial=settings_data)
         return render(request, 'CarbonTracker/settings.html', {'form': form, 'settings': settings_data})
 

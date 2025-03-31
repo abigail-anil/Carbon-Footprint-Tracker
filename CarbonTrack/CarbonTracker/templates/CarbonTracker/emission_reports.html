@@ -1,4 +1,6 @@
-{% extends "CarbonTracker/base_generic.html" %}
+{% extends "CarbonTracker/base_generic.html" %} {# Inherit from base template for layout consistency #}
+
+{# Block to include additional CSS styles and DataTables library #}
 {% block extra_head %}
   <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.min.css">
   <style>
@@ -27,6 +29,8 @@
 
 {% block content %}
 <div style="display: flex; min-height: 100vh;">
+  
+    {# Sidebar navigation links #}
     <div style="width: 200px; background-color: #e0e0e0; padding: 10px; font-size: 1.2em;">
         <a href="{% url 'calculate_emission' %}" style="font-size: 1.2em; display: block;">Calculate Emission</a><br><br>
         <a href="{% url 'emission_reports' %}" style="font-size: 1.2em; display: block;">Emission Reports</a>
@@ -34,6 +38,7 @@
     <div style="flex-grow: 1; padding: 20px; font-size: 1.2em;">
         <h1 style="text-align: center; font-size: 1.5em;">Emission Reports</h1>
 
+        {# Filter form: allows filtering by date and activity type #}
         <div style="margin-top: 20px;">
             <form method="get">
                 <div style="display: flex; justify-content: space-between; width: 100%;">
@@ -56,12 +61,15 @@
             </form>
         </div>
 
+        {# Show total emissions summary #}
         <h2 style="margin-top: 20px; text-align: center;">Total Emissions: {{ total_emissions }} kg CO2e</h2>
 
+        {# CSV export button #}
         <div style="text-align: center;">
             <a href="{% url 'export_csv' %}?start_date={{ start_date }}&end_date={{ end_date }}&activity_type={{ activity_type }}" style="font-size: 1.2em;">Export to CSV</a>
         </div>
 
+        {# Emission data table with input details #}
         {% if emissions %}
         <table border="1" style="width: 100%; margin-top: 20px;" id="emissionTable">
             <thead>
@@ -111,6 +119,7 @@
         <p style="text-align: center;">No emission reports found.</p>
         {% endif %}
 
+        {# Emission charts (line, bar, pie) with S3 download links #}
         <div style="margin-top: 20px;">
             <div style="width: 100%; margin-bottom: 20px;">
                 {% if chart_image_line %}
@@ -145,16 +154,18 @@
     </div>
 </div>
 
+{# DataTables & AJAX functionality for sorting, pagination, and deletion #}
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
 <script>
 $(document).ready(function() {
+   // Initialize DataTable
   $('#emissionTable').DataTable({
     paging: true,
     pagingType: "simple_numbers",
     searching: true,
     info: true,
-    order: [[0, 'asc']],
+    order: [[0, 'asc']], // Order by date
     drawCallback: function(settings) {
       $('.dataTables_paginate .paginate_button').each(function(){
         $(this).nextUntil('.paginate_button').remove();
@@ -163,6 +174,7 @@ $(document).ready(function() {
     }
   });
 
+  // Match filter button width to end date input
   let end_date_width = $('#end_date_input').outerWidth();
   $('#filter_button').css('width', end_date_width + 'px');
 

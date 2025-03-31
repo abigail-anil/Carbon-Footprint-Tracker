@@ -2,6 +2,7 @@ from django import forms
 from django.core.validators import MinValueValidator
 
 class ElectricityForm(forms.Form):
+    """Form for electricity-related emissions."""
     location = forms.ChoiceField(choices=[])  # This will be updated dynamically
     value = forms.DecimalField()
     unit = forms.ChoiceField(choices=[('kWh', 'kWh'), ('MWh', 'MWh')])
@@ -13,11 +14,13 @@ class ElectricityForm(forms.Form):
 
 
 class FlightForm(forms.Form):
+    """Form for flight-related emissions."""
     passengers = forms.IntegerField()
     departure_airport = forms.CharField(max_length=3)
     destination_airport = forms.CharField(max_length=3)
 
 class ShippingForm(forms.Form):
+    """Form for shipping-related emissions."""
     weight_value = forms.DecimalField()
     weight_unit = forms.ChoiceField(choices=[('kg', 'kg'), ('mt', 'mt')])
     distance_value = forms.DecimalField()
@@ -25,6 +28,7 @@ class ShippingForm(forms.Form):
     transport_method = forms.ChoiceField(choices=[('ship', 'Ship'), ('train', 'Train'), ('truck', 'Truck'), ('plane', 'Plane')])
 
 class ActivityTypeForm(forms.Form):
+    """Form for selecting the activity type"""
     activity_type = forms.ChoiceField(choices=[
         ('electricity', 'Electricity'),
         ('flight', 'Flight'),
@@ -35,11 +39,13 @@ class ActivityTypeForm(forms.Form):
     
     
 class FuelCombustionForm(forms.Form):
+    """Form for fuel combustion -related emissions."""
     fuel_source_type = forms.ChoiceField(label="Fuel Source Type")
     fuel_source_unit = forms.ChoiceField(label="Fuel Source Unit")
     fuel_source_value = forms.DecimalField(label="Fuel Source Value")
     
 class SettingsForm(forms.Form):
+    """Form for editing settings """
     electricity_threshold = forms.IntegerField(min_value=0, required=True)
     flight_threshold = forms.IntegerField(min_value=0, required=True)
     shipping_threshold = forms.IntegerField(min_value=0, required=True)

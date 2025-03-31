@@ -9,7 +9,7 @@ def delete_all_items():
     scan = table.scan()
     with table.batch_writer() as batch:
         for item in scan["Items"]:
-            batch.delete_item(Key={"model_id": item["model_id"]})  # Add sort key if applicable
+            batch.delete_item(Key={"model_id": item["model_id"]})  #deleting records based on key
     
     print("All items deleted successfully.")
 

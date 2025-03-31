@@ -1,6 +1,7 @@
 import boto3
 import os
 
+# ---------------------- S3 BUCKET CREATION ----------------------
 def create_s3_bucket(bucket_name, region="us-east-1"):
     """Creates an S3 bucket."""
     s3 = boto3.client("s3", region_name=region)
@@ -13,6 +14,7 @@ def create_s3_bucket(bucket_name, region="us-east-1"):
     except Exception as e:
         print(f"Error creating S3 bucket: {e}")
 
+# ---------------------- DYNAMODB TABLE 1: CarbonFootprint ----------------------
 def create_dynamodb_table1(table_name, region_name="us-east-1"):
     """Creates the DynamoDB table."""
     dynamodb = boto3.resource("dynamodb", region_name=region_name)
@@ -34,6 +36,7 @@ def create_dynamodb_table1(table_name, region_name="us-east-1"):
     except Exception as e:
         print(f"Error creating table: {e}")
 
+# ---------------------- SNS TOPIC CREATION ----------------------
 def create_sns_topic(topic_name, region="us-east-1"):
     """Creates an SNS topic."""
     sns = boto3.client("sns", region_name=region)
@@ -46,6 +49,7 @@ def create_sns_topic(topic_name, region="us-east-1"):
         print(f"Error creating SNS topic: {e}")
         return None
 
+# ---------------------- DYNAMODB TABLE 2: supported_countries ----------------------
 def create_dynamodb_table2(table_name, region_name="us-east-1"):
     """Creates the DynamoDB table."""
     dynamodb = boto3.resource("dynamodb", region_name=region_name)
@@ -67,6 +71,7 @@ def create_dynamodb_table2(table_name, region_name="us-east-1"):
     except Exception as e:
         print(f"Error creating table: {e}")
         
+# ---------------------- DYNAMODB TABLE 3: fuel_sources ----------------------
 def create_dynamodb_table3(table_name, region_name="us-east-1"):
     """Creates the DynamoDB table for fuel sources and their corresponding units."""
     dynamodb = boto3.resource("dynamodb", region_name=region_name)
@@ -88,7 +93,7 @@ def create_dynamodb_table3(table_name, region_name="us-east-1"):
     except Exception as e:
         print(f"Error creating table: {e}")
         
-        
+# ---------------------- DYNAMODB TABLE 4: user_settings ----------------------
 def create_dynamodb_table4(table_name, region_name="us-east-1"):
     """Creates the DynamoDB table."""
     dynamodb = boto3.resource("dynamodb", region_name=region_name)
@@ -110,7 +115,7 @@ def create_dynamodb_table4(table_name, region_name="us-east-1"):
     except Exception as e:
         print(f"Error creating table: {e}")
 
-
+# ---------------------- DYNAMODB TABLE 5: VehicleModels ----------------------
 def create_dynamodb_table5(table_name, region_name="us-east-1"):
     """Creates the DynamoDB table."""
     dynamodb = boto3.resource("dynamodb", region_name=region_name)
@@ -134,7 +139,7 @@ def create_dynamodb_table5(table_name, region_name="us-east-1"):
         print(f"Error creating table: {e}")
 
 
-
+# ---------------------- MAIN EXECUTION ----------------------
 if __name__ == "__main__":
     create_s3_bucket("carbon-tracker-reports", "us-east-1")
     create_dynamodb_table1("CarbonFootprint", "us-east-1")
@@ -157,7 +162,7 @@ if __name__ == "__main__":
         create_sns_topic(topic_name, region)'''
         
         
-
+# ----------------------  TABLE MODIFICATION LOGIC ----------------------
 dynamodb = boto3.client('dynamodb')
 
 try:

@@ -15,6 +15,7 @@ def insert_fuel_source_data(table_name, fuel_source_id, unit, fuel_source_type, 
     )
     print("Item inserted successfully.")
 
+#inserting records
 insert_fuel_source_data("fuel_sources", "1", "short_ton", "Bituminous Coal", "bit")
 insert_fuel_source_data("fuel_sources", "1", "btu", "Bituminous Coal", "bit")
 insert_fuel_source_data("fuel_sources", "2", "gallon", "Home Heating and Diesel Fuel(Distillate)", "dfo")

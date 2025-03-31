@@ -1,24 +1,29 @@
 import boto3
 import time
 
+# Create AWS clients for Lambda, SNS, and CloudWatch Events
 lambda_client = boto3.client('lambda')
 sns_client = boto3.client('sns')
 events_client = boto3.client('events')
 
-rule_name = 'carbon-emissions-monthly-schedule' # change rule name
+# Define resource names and parameters
+rule_name = 'carbon-emissions-monthly-schedule' 
 schedule_expression = 'cron(0 0 1 * ? *)'  # Monthly at 00:00 UTC on the 1st
 function_name = 'lambda-carbon-emissions'
 topic_arn = 'arn:aws:sns:us-east-1:754789402555:carbon_emissions_alerts'
 
+#Creating lambda function if not existing
 try:
+    # Check if Lambda function already exists
     lambda_client.get_function(FunctionName=function_name)
     print(f"Function '{function_name}' already exists.")
     response = lambda_client.get_function(FunctionName=function_name)
 except lambda_client.exceptions.ResourceNotFoundException:
+    # Create Lambda function if it doesn't exist
     response = lambda_client.create_function(
         FunctionName=function_name,
         Runtime='python3.9',
-        Role='arn:aws:iam::754789402555:role/LabRole',
+        Role='arn:aws:iam::754789402555:role/LabRole', # IAM role with necessary permissions
         Handler='lambda_function.lambda_handler',
         Code={'ZipFile': open('lambda_package.zip', 'rb').read()},
         Environment={'Variables': {'CARBON_TABLE': 'CarbonFootprint', 'SETTINGS_TABLE': 'user_settings'}}
@@ -39,8 +44,10 @@ except lambda_client.exceptions.ResourceNotFoundException:
             print(f'Error getting function state: {e}')
             time.sleep(5)
 
+# Get Lambda function ARN
 lambda_arn = function_info['Configuration']['FunctionArn']
 
+# --- Subscribe Lambda to SNS Topic ---
 try:
     subscription_response = sns_client.subscribe(
         TopicArn=topic_arn,
@@ -51,6 +58,7 @@ try:
 except Exception as e:
     print(f"Subscription already exists or error: {e}")
 
+# --- Add permission for SNS to invoke Lambda ---
 try:
     lambda_client.add_permission(
         FunctionName=function_name,
@@ -63,8 +71,7 @@ try:
 except Exception as e:
     print(f"Permission already exists or error: {e}")
 
-# CloudWatch events trigger.
-# Create CloudWatch Events Rule
+# --- Create CloudWatch Event Rule to trigger Lambda monthly ---
 rule_response = events_client.put_rule(
     Name=rule_name,
     ScheduleExpression=schedule_expression,
@@ -74,7 +81,7 @@ rule_response = events_client.put_rule(
 
 print(f"CloudWatch Events rule created: {rule_response}")
 
-# Add Target to the Rule
+# --- Add Lambda function as target to CloudWatch Event Rule ---
 lambda_arn = lambda_client.get_function(FunctionName=function_name)['Configuration']['FunctionArn']
 
 target_response = events_client.put_targets(
@@ -89,7 +96,7 @@ target_response = events_client.put_targets(
 
 print(f"CloudWatch Events target added: {target_response}")
 
-# Grant CloudWatch Events Permission to Invoke Lambda Function
+# --- Grant CloudWatch Events permission to invoke Lambda ---
 permission_response = lambda_client.add_permission(
     FunctionName=function_name,
     StatementId='CloudWatchEventsInvoke',

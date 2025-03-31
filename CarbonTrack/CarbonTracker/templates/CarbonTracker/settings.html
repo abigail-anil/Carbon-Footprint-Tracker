@@ -1,7 +1,9 @@
-{% extends "CarbonTracker/base_generic.html" %}
+{% extends "CarbonTracker/base_generic.html" %} {# Inherit base layout for consistent styling #}
 
 {% block content %}
 <div style="display: flex; justify-content: center;">
+    
+    {# Sidebar menu for navigation #}
     <div style="width: 200px; background-color: #e0e0e0; padding: 10px; height: 100vh;">
         <table style="width: 100%;">
             <tr>
@@ -16,15 +18,21 @@
             </tr>
         </table>
     </div>
+    
+    {# Main content area: User settings form and subscription controls #}
     <div style="flex-grow: 1; padding: 20px; font-size: 1.2em; display: flex; flex-direction: column; align-items: center;">
         <h1 style="text-align: center; font-size: 1.5em;">User Settings</h1>
 
         <form method="post" style="margin-top: 20px; width: 300px;">
             {% csrf_token %}
-            {{ form.as_p }}
+            {{ form.as_p }} {# Render the Django form as paragraphs #}
+            
+            {# Submit button for saving settings #}
             <div style="text-align: center; margin-top: 10px;">
                 <button type="submit" style="background-color: #4CAF50; color: white; padding: 10px 20px; border: none; cursor: pointer; font-size: 1.2em;">Save Settings</button>
             </div>
+            
+            {# Display result or validation errors #}
             <div id="settings-result" style="margin-top: 20px; text-align: center;">
                 {% if message %}
                     <p style="color: green;">{{ message }}</p>
@@ -33,7 +41,7 @@
                     <div style="color: red;">
                         {% for field, errors in form_errors.items %}
                             {% for error in errors %}
-                                <p>{{ field|capfirst }}: {{ error }}</p>
+                                <p>{{ field|capfirst }}: {{ error }}</p> {# Show field-specific errors #}
                             {% endfor %}
                         {% endfor %}
                     </div>
@@ -41,7 +49,10 @@
             </div>
         </form>
 
+        {# Show subscribe/unsubscribe button based on current subscription status #}
         {% if not settings.subscribed %}
+        
+            {# Subscribe button if user is not subscribed to notifications #}
             <form method="post" style="margin-top: 20px; text-align: center;">
                 {% csrf_token %}
                 <button type="submit" name="subscribe" style="background-color: #4CAF50; color: white; padding: 10px 20px; border: none; cursor: pointer; font-size: 1.2em;">Subscribe to Notifications</button>
@@ -49,6 +60,8 @@
         {% else %}
             <div style="text-align: center;">
                 <p>You are already subscribed to notifications.</p>
+                
+                {# Unsubscribe button if user is already subscribed #}
                 <form method="post" style="margin-top: 20px; text-align: center;">
                     {% csrf_token %}
                     <button type="submit" name="unsubscribe" style="background-color: #d9534f; color: white; padding: 10px 20px; border: none; cursor: pointer; font-size: 1.2em;">Unsubscribe from Notifications</button>
