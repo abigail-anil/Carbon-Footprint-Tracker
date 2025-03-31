@@ -64,7 +64,7 @@ def get_secret():
 
 # ---------------- API & Object Initialization ---------------- #
 secrets = get_secret()
-
+print(secrets)
 if secrets:
     api_key = secrets.get("api_key")
     if api_key:

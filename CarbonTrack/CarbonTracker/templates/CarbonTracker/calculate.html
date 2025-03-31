@@ -1,26 +1,34 @@
-{% extends "CarbonTracker/base_generic.html" %} 
+{% extends "CarbonTracker/base_generic.html" %} {# Extend the base template for consistent layout #}
 
 {% block content %}
+
 <div style="display: flex;">
+    {# Sidebar with navigation links #}
     <div style="width: 200px; background-color: #e0e0e0; padding: 10px; height: 100vh; font-size: 1.2em;">
         <a href="{% url 'calculate_emission' %}" style="font-size: 1.2em;">Calculate Emission</a><br><br>
         <a href="{% url 'emission_reports' %}" style="font-size: 1.2em;">Emission Reports</a>
     </div>
 
+    {# Main content area #}
     <div style="padding: 20px; flex-grow: 1; font-size: 1.2em;">
         
         <h1 style="text-align: center; font-size: 1.5em;">Carbon Footprint Tracker</h1>
 
+        {# Emission calculation form #}
         <form method="post" style="margin-top: 20px;">
             {% csrf_token %}
+            
+            {# Render the activity type selection dropdown #}
             <div style="text-align: center;">
                 {{ activity_form.as_p }}
             </div>
 
+            {# Dynamically render fields based on the selected activity type #}
             <div style="margin-top: 10px; text-align: center;">
                 {% if activity_type == 'electricity' %}
                     {{ form.as_p }}
                 {% elif activity_type == 'flight' %}
+                    {# Flight-specific form fields with airport code search links #}
                     <p>
                         {{ form.departure_airport.label_tag }}
                         {{ form.departure_airport }}
@@ -40,6 +48,8 @@
                 {% elif activity_type == 'fuel_combustion' %}
                     {{ form.as_p }}
                 {% elif activity_type == 'vehicle' %}
+                
+                    {# Vehicle activity: make dropdown, then conditional model, distance fields #}
                     <p>
                         {{ form.vehicle_make.label_tag }}
                         <select name="vehicle_make" id="id_vehicle_make">
@@ -51,6 +61,7 @@
                         </select>
                     </p>
 
+                    {# Show model and distance fields if vehicle_make is selected #}
                     {% if request.GET.vehicle_make or request.POST.vehicle_make %}
                         <p>
                             {{ form.vehicle_model.label_tag }}
@@ -69,10 +80,12 @@
                 {% endif %}
             </div>
 
+            {# Submit button #}
             <div style="margin-top: 20px; text-align: center;">
                 <button type="submit" style="background-color: #4CAF50; color: white; padding: 10px 20px; border: none; cursor: pointer; font-size: 1.2em;">Calculate</button>
             </div>
 
+            {# Display result or errors after form submission #}
             <div id="emission-result" style="margin-top: 20px; text-align: center;">
                 {% if form.errors %}
                     <div style="color: red;">
@@ -93,6 +106,7 @@
             </div>
         </form>
 
+        {# JavaScript to handle dynamic form updates and validation #}
         <script>
             document.addEventListener('DOMContentLoaded', () => {
                 // Handle activity type change
